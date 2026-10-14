@@ -1,0 +1,4331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通用正向推理矩陣計算器 - 基于 Amit Konar《AI & Soft Computing》</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- KaTeX for crisp Math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        html {
+            font-size: 118%;
+        }
+
+        :root {
+            /* Clean & Formal Light Academic Palette (白色正式學術風格) */
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-alt: #f1f5f9;
+            --bg-input: #ffffff;
+            
+            --border-subtle: #e2e8f0;
+            --border-focus: #2563eb;
+            --border-dark: #cbd5e1;
+
+            --text-main: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            
+            --blue-primary: #1d4ed8;
+            --blue-hover: #1e40af;
+            --blue-subtle: #eff6ff;
+            --blue-border: #bfdbfe;
+
+            --emerald-primary: #059669;
+            --emerald-subtle: #ecfdf5;
+            --emerald-border: #a7f3d0;
+
+            --amber-primary: #d97706;
+            --amber-subtle: #fffbeb;
+            --amber-border: #fde68a;
+
+            --rose-primary: #dc2626;
+            --rose-subtle: #fef2f2;
+            --rose-border: #fecaca;
+
+            --purple-primary: #7c3aed;
+            --purple-subtle: #f5f3ff;
+            --purple-border: #ddd6fe;
+
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'Fira Code', Menlo, Monaco, Consolas, monospace;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.5;
+            padding-bottom: 50px;
+            font-size: 17px;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 12px 28px;
+        }
+
+        .header-content {
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.01em;
+        }
+
+        .header-title h1 span.badge-tag {
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: var(--blue-subtle);
+            color: var(--blue-primary);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--blue-border);
+            font-family: var(--font-mono);
+        }
+
+        .header-title p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .preset-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #ffffff;
+            border: 1px solid var(--border-dark);
+            color: var(--text-main);
+            padding: 6px 13px;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+            white-space: nowrap;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn:hover {
+            background: var(--bg-card-alt);
+            border-color: #94a3b8;
+            color: var(--text-main);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--blue-primary);
+            border-color: var(--blue-primary);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: var(--blue-hover);
+            border-color: var(--blue-hover);
+            color: #ffffff;
+        }
+
+        .btn-success {
+            background: var(--emerald-primary);
+            border-color: var(--emerald-primary);
+            color: #ffffff;
+        }
+
+        .btn-success:hover {
+            background: #047857;
+            border-color: #047857;
+            color: #ffffff;
+        }
+
+        .btn-sm {
+            padding: 4px 9px;
+            font-size: 0.75rem;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--bg-card-alt);
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .mode-btn {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: none;
+            color: var(--text-secondary);
+            background: transparent;
+            transition: all 0.15s;
+            font-weight: 500;
+        }
+
+        .mode-btn.active {
+            background: #ffffff;
+            color: var(--blue-primary);
+            font-weight: 700;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .validation-status {
+            display: none;
+            padding: 8px 10px;
+            border-radius: 7px;
+            font-size: 0.74rem;
+            line-height: 1.45;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .validation-status.ok {
+            display: block;
+            color: #166534;
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .validation-status.error {
+            display: block;
+            color: #991b1b;
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .status-deadlock {
+            color: #991b1b !important;
+            background: #fef2f2 !important;
+            border-color: #fecaca !important;
+        }
+
+        /* Container Layout */
+        .main-container {
+            width: 100%;
+            max-width: none;
+            margin: 20px auto;
+            padding: 0 18px;
+            display: grid;
+            grid-template-columns: 400px 1fr 450px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .main-container > * {
+            min-width: 0;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+        }
+
+        .btn {
+            font-size: 0.9rem;
+        }
+
+        .btn-sm {
+            font-size: 0.82rem;
+        }
+
+        .mode-btn,
+        .tab-btn,
+        .label,
+        .num-input,
+        .stepper-val {
+            font-size: 0.88rem;
+        }
+
+        .matrix-table th,
+        .matrix-table td,
+        .trace-step-item,
+        .decision-reasoning {
+            font-size: 0.86rem;
+        }
+
+        .run-panel {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .run-btn {
+            font-size: 0.95rem;
+            font-weight: 800;
+            padding: 9px 16px;
+            min-height: 42px;
+        }
+
+        .run-btn-pending {
+            animation: status-pulse 1.2s ease-in-out infinite;
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+        }
+
+        .run-status {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .run-status.dirty {
+            color: var(--amber-primary);
+            animation: status-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes status-pulse {
+            50% { opacity: 0.55; }
+        }
+
+        .transition-meta {
+            font-size: 10px;
+            fill: #475569;
+            text-anchor: middle;
+        }
+
+        .inline-report {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .inline-report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .inline-report-content {
+            max-height: 360px;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 1500px) {
+            .main-container {
+                grid-template-columns: 380px 1fr;
+            }
+            .right-col {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 980px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .right-col, .center-col {
+                grid-column: span 1;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .badge-blue {
+            background: var(--blue-subtle);
+            color: var(--blue-primary);
+            border-color: var(--blue-border);
+        }
+
+        .badge-green {
+            background: var(--emerald-subtle);
+            color: var(--emerald-primary);
+            border-color: var(--emerald-border);
+        }
+
+        .badge-amber {
+            background: var(--amber-subtle);
+            color: var(--amber-primary);
+            border-color: var(--amber-border);
+        }
+
+        /* Configurator Bar */
+        .topology-config-box {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.78rem;
+        }
+
+        .config-row span.label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .num-stepper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-stepper {
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+            border-radius: 5px;
+            background: #ffffff;
+            border: 1px solid var(--border-dark);
+            cursor: pointer;
+        }
+
+        .btn-stepper:hover {
+            background: var(--blue-subtle);
+            color: var(--blue-primary);
+            border-color: var(--blue-border);
+        }
+
+        .stepper-val {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            width: 32px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--blue-primary);
+        }
+
+        /* Input Controls */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .input-item {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: border-color 0.15s;
+        }
+
+        .input-item:hover {
+            border-color: #cbd5e1;
+        }
+
+        .input-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+        }
+
+        .node-tag {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: var(--blue-primary);
+            cursor: pointer;
+            border-bottom: 1px dashed var(--blue-primary);
+        }
+
+        .input-control-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-slider {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            accent-color: var(--blue-primary);
+        }
+
+        .num-input {
+            width: 58px;
+            padding: 3px 6px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            border: 1px solid var(--border-dark);
+            border-radius: 5px;
+            background: var(--bg-input);
+            color: var(--text-main);
+            text-align: right;
+        }
+
+        .num-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px var(--blue-subtle);
+        }
+
+        /* Matrices Editor Tables */
+        .matrix-table-container {
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            background: #ffffff;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-align: center;
+        }
+
+        .matrix-table th {
+            background: var(--bg-card-alt);
+            padding: 4px 6px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .matrix-table td {
+            padding: 4px 6px;
+            border-bottom: 1px solid var(--border-subtle);
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .matrix-cell-btn {
+            background: transparent;
+            border: none;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            font-weight: bold;
+            color: #94a3b8;
+            padding: 2px;
+            border-radius: 3px;
+        }
+
+        .matrix-cell-btn.one {
+            color: var(--blue-primary);
+            background: var(--blue-subtle);
+        }
+
+        .matrix-cell-btn:hover {
+            background: #e2e8f0;
+        }
+
+        /* SVG Graph Viewport */
+        .graph-container {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            position: relative;
+            min-height: 420px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        svg#fpn-svg {
+            width: 100%;
+            height: 420px;
+        }
+
+        /* Clean SVG Straight Lines & Nodes */
+        .place-circle {
+            fill: #ffffff;
+            stroke: #2563eb;
+            stroke-width: 2.2;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .place-circle:hover {
+            fill: #eff6ff;
+            stroke-width: 3.0;
+        }
+
+        .place-node.active-max .place-circle {
+            fill: #fee2e2;
+            stroke: #dc2626;
+            stroke-width: 3.2;
+        }
+
+        .place-node.highlight-path .place-circle {
+            fill: #ecfdf5;
+            stroke: #059669;
+            stroke-width: 2.8;
+        }
+
+        .transition-bar {
+            fill: #1e293b;
+            stroke: #0f172a;
+            stroke-width: 1.5;
+            transition: fill 0.2s;
+        }
+
+        .transition-bar.firing {
+            fill: #2563eb;
+            stroke: #1d4ed8;
+            filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.5));
+        }
+
+        /* STRAIGHT LINE ARCS (直線變遷) */
+        .arc-line {
+            stroke: #94a3b8;
+            stroke-width: 1.6;
+            fill: none;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
+
+        .arc-line.active {
+            stroke: #2563eb;
+            stroke-width: 2.5;
+        }
+
+        .arc-line.path-traced {
+            stroke: #059669;
+            stroke-width: 2.8;
+            stroke-dasharray: 4 2;
+        }
+
+        .node-label {
+            font-size: 11px;
+            font-weight: 700;
+            fill: #0f172a;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: var(--font-sans);
+        }
+
+        .node-subtext {
+            font-size: 9px;
+            fill: #64748b;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: var(--font-sans);
+        }
+
+        .node-val {
+            font-size: 10px;
+            font-weight: 700;
+            fill: #1d4ed8;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: var(--font-mono);
+        }
+
+        /* Timeline & Player Bar */
+        .control-panel {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 8px 12px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .step-counter {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Decision Evaluation Banner */
+        .decision-box {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .decision-box.highlight-decision {
+            border-left: 4px solid var(--emerald-primary);
+            background: #ffffff;
+        }
+
+        .decision-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .decision-result {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .decision-reasoning {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        /* Chart Canvas Cards */
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        @media (max-width: 1200px) {
+            .chart-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            min-height: 230px;
+        }
+
+        .chart-title {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 34px;
+        }
+
+        .chart-title > span:last-child {
+            white-space: nowrap;
+        }
+
+        canvas.fpn-chart {
+            width: 100%;
+            height: 170px;
+            background: #ffffff;
+            display: block;
+        }
+
+        /* Step-by-Step Logs */
+        .trace-logs {
+            max-height: 760px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 2px 6px 2px 2px;
+        }
+
+        .trace-step-item {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 14px 16px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .trace-step-item:hover {
+            border-color: var(--border-dark);
+        }
+
+        .trace-step-item.active-step {
+            border-color: var(--blue-border);
+            border-left: 4px solid var(--blue-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .trace-step-item.steady {
+            border-left-color: var(--emerald-primary);
+        }
+
+        .trace-header {
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            padding-bottom: 9px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .trace-status {
+            padding: 3px 7px;
+            border-radius: 4px;
+            color: var(--blue-primary);
+            background: var(--blue-subtle);
+            font: 600 0.68rem var(--font-sans);
+            white-space: nowrap;
+        }
+
+        .trace-step-item.steady .trace-status {
+            color: var(--emerald-primary);
+            background: var(--emerald-subtle);
+        }
+
+        .trace-section-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 18px;
+        }
+
+        .trace-section {
+            min-width: 0;
+            padding-top: 9px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .trace-section-title {
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font: 700 0.76rem/1.4 var(--font-sans);
+        }
+
+        .trace-value-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .trace-value-table td {
+            padding: 4px 6px;
+            border-bottom: 1px solid #edf0f4;
+            vertical-align: top;
+        }
+
+        .trace-value-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .trace-value-label {
+            width: 34%;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .trace-value-content {
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 620px) {
+            .trace-section-grid {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 8px;
+            }
+
+            .trace-step-item {
+                padding: 11px 12px;
+            }
+        }
+
+        /* Tabs */
+        .tab-nav {
+            display: flex;
+            gap: 6px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 8px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.15s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: var(--bg-card-alt);
+        }
+
+        .tab-btn.active {
+            background: var(--blue-subtle);
+            color: var(--blue-primary);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Shared single-column workflow across the calculator workspaces. */
+        .main-container {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 18px;
+            width: min(1480px, calc(100% - 48px));
+            margin: 24px auto;
+            padding: 0;
+        }
+
+        .main-container > .card,
+        .main-container > .right-col,
+        .main-container > .center-col {
+            grid-column: 1;
+            width: 100%;
+        }
+
+        .main-container > .card:first-child {
+            padding: 22px;
+        }
+
+        .main-container > .card:first-child .card-title {
+            font-size: 1.05rem;
+        }
+
+        #fpn-main {
+            gap: 20px;
+        }
+
+        #fpn-main > .card {
+            padding: 24px;
+            border-color: #dbe3ed;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        }
+
+        #fpn-main > .card:first-child {
+            gap: 18px;
+        }
+
+        #fpn-main > .card:first-child .card-header {
+            padding-bottom: 14px;
+        }
+
+        .main-container > .card:first-child .input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            max-height: none;
+            overflow: visible;
+            gap: 12px;
+        }
+
+        .main-container > .card:first-child .input-item {
+            min-height: 76px;
+            padding: 12px 14px;
+        }
+
+        .main-container > .card:first-child .input-label-row {
+            font-size: 0.92rem;
+        }
+
+        .main-container > .card:first-child .node-tag {
+            font-size: 0.9rem;
+        }
+
+        .main-container > .center-col .card-title,
+        .main-container > .right-col .card-title {
+            font-size: 1.05rem;
+        }
+
+        #fpn-main .preset-bar {
+            display: grid;
+            grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.8fr);
+            align-items: stretch;
+            gap: 14px;
+            padding: 0;
+            border: 0;
+        }
+
+        .preset-section {
+            min-width: 0;
+            padding: 15px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .preset-section-heading {
+            margin-bottom: 10px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            font-weight: 750;
+        }
+
+        .preset-section-description {
+            margin: -5px 0 12px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+        }
+
+        .preset-custom-section {
+            border-top: 3px solid var(--blue-primary);
+            background: #f8fbff;
+        }
+
+        .preset-custom-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .preset-custom-controls .mode-toggle {
+            align-self: flex-start;
+            max-width: 100%;
+        }
+
+        .preset-scenarios-section {
+            border-top: 3px solid #64748b;
+        }
+
+        .scenario-example-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .scenario-example {
+            min-width: 0;
+            min-height: 102px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 11px 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .scenario-example-title {
+            color: var(--text-main);
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .scenario-example-reference {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+        }
+
+        .scenario-example .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .scenario-example .btn-primary {
+            color: #fff;
+        }
+
+        .preset-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .preset-actions-label {
+            margin-right: 3px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        #fpn-main .run-panel {
+            margin-top: 8px;
+            padding: 12px 0 0;
+        }
+
+        .scenario-story {
+            background: var(--blue-subtle);
+            border: 1px solid var(--blue-border);
+            border-left: 4px solid var(--blue-primary);
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            white-space: pre-line;
+        }
+
+        .stable-value {
+            color: var(--emerald-primary);
+            font-family: var(--font-mono);
+            font-size: 0.86rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* Readable presentation scale for dense academic controls and results. */
+        main .card p,
+        main .card li,
+        main .card .config-row,
+        main .card .input-label-row,
+        main .card .tab-btn,
+        main .card .matrix-table,
+        main .card .trace-header,
+        main .card .trace-math,
+        main .card .decision-title,
+        main .card .decision-result,
+        main .card .decision-reasoning,
+        main .card .chart-title {
+            font-size: 1rem !important;
+        }
+
+        main .card .btn,
+        main .card input,
+        header .btn,
+        header .mode-btn {
+            font-size: 0.95rem !important;
+        }
+
+        main .card .num-input {
+            width: 92px !important;
+            min-width: 92px;
+            min-height: 36px;
+            padding: 5px 8px;
+            letter-spacing: 0;
+        }
+
+        main .card .matrix-table th,
+        main .card .matrix-table td {
+            min-width: 76px;
+            padding: 8px 10px;
+        }
+
+        main .card .matrix-table th:first-child {
+            min-width: 112px;
+        }
+
+        main .card .matrix-cell-btn {
+            min-width: 62px;
+            min-height: 36px;
+            padding: 5px 6px;
+            font-size: 0.9rem !important;
+        }
+
+        .node-label {
+            font-size: 13px;
+        }
+
+        .node-subtext {
+            font-size: 11px;
+        }
+
+        .node-val {
+            font-size: 12px;
+        }
+
+        .workspace-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            background: var(--bg-card-alt);
+        }
+
+        .workspace-btn {
+            border: 0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            background: transparent;
+            font: 600 0.82rem var(--font-sans);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .workspace-btn:hover,
+        .workspace-btn.active {
+            color: var(--blue-primary);
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-content {
+            max-width: 1480px;
+        }
+
+        .topology-config-box {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            padding: 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .topology-config-box .config-row {
+            min-height: 46px;
+            padding: 8px 10px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 7px;
+            background: #fff;
+        }
+
+        #fpn-main .tab-nav {
+            gap: 8px;
+            padding-bottom: 10px;
+        }
+
+        #fpn-main .tab-btn {
+            padding: 8px 12px;
+        }
+
+        #fpn-main > .center-col,
+        #fpn-main > .right-col {
+            padding: 24px;
+        }
+
+        #fpn-main .card-header {
+            padding-bottom: 13px;
+        }
+
+        #fpn-main .trace-logs {
+            max-height: 900px;
+        }
+
+        @media (max-width: 980px) {
+            #fpn-main .preset-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .preset-actions {
+                grid-column: 1;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .main-container {
+                width: calc(100% - 28px);
+                margin: 16px auto;
+            }
+
+            #fpn-main > .card,
+            #fpn-main > .center-col,
+            #fpn-main > .right-col {
+                padding: 16px;
+            }
+
+            .topology-config-box {
+                grid-template-columns: 1fr;
+            }
+
+            .scenario-example-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .scenario-example {
+                min-height: 0;
+            }
+
+            .preset-custom-controls .mode-toggle {
+                width: 100%;
+            }
+
+            .preset-custom-controls .mode-btn {
+                flex: 1;
+                white-space: normal;
+            }
+        }
+
+        body.matrix-mode #fpn-main,
+        body.matrix-mode #paper-workbench,
+        body.paper-mode #fpn-main,
+        body.paper-mode #matrix-workbench {
+            display: none;
+        }
+
+        #matrix-workbench,
+        #paper-workbench {
+            display: none;
+        }
+
+        body.matrix-mode #matrix-workbench,
+        body.paper-mode #paper-workbench {
+            display: grid;
+        }
+
+        .utility-workbench {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 18px;
+        }
+
+        .utility-workbench > .card {
+            grid-column: 1;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .paper-example-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 12px 0 16px;
+            padding: 10px 12px;
+            border-left: 3px solid var(--blue-primary);
+            background: var(--bg-card-alt);
+        }
+
+        .paper-example-tools-label {
+            margin-right: 4px;
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .paper-custom-matrix {
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 14px;
+        }
+
+        .paper-custom-matrix-title {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .utility-input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+            gap: 7px;
+            max-height: 56vh;
+            overflow: auto;
+            padding: 2px;
+        }
+
+        .utility-cell {
+            width: 100%;
+            min-width: 0;
+            min-height: 38px;
+            padding: 6px 7px;
+            border: 1px solid var(--border-dark);
+            border-radius: 5px;
+            color: var(--text-main);
+            background: #fff;
+            font: 500 0.82rem var(--font-mono);
+            text-align: right;
+        }
+
+        .utility-result-table {
+            border-collapse: separate;
+            border-spacing: 4px;
+            font: 500 0.78rem var(--font-mono);
+        }
+
+        .utility-result-table td,
+        .utility-result-table th {
+            min-width: 48px;
+            padding: 6px 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 4px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .utility-result-table th {
+            background: var(--bg-card-alt);
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .inverse-guide {
+            margin: 12px 0 16px;
+            border-block: 1px solid var(--border-subtle);
+        }
+
+        .inverse-guide summary {
+            padding: 11px 2px;
+            color: var(--blue-primary);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .inverse-guide-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 14px;
+            padding: 0 2px 14px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            line-height: 1.65;
+        }
+
+        .inverse-equation {
+            margin: 7px 0;
+            padding: 9px 11px;
+            overflow-x: auto;
+            border-left: 3px solid var(--blue-primary);
+            background: var(--bg-card-alt);
+            font: 500 0.8rem/1.65 var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .inverse-result-grid,
+        .inverse-chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .inverse-chart {
+            min-width: 0;
+            padding: 10px 6px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .inverse-chart svg {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .inverse-chart-scroll {
+            overflow: auto;
+        }
+
+        @media (max-width: 760px) {
+            .workspace-toggle {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                width: 100%;
+                overflow: visible;
+            }
+
+            .workspace-btn {
+                min-width: 0;
+                min-height: 42px;
+                padding: 6px 4px;
+                font-size: 0.72rem;
+                line-height: 1.25;
+                text-align: center;
+                white-space: normal;
+            }
+
+            #fpn-main > .card:first-child .card-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            #fpn-main > .card:first-child .card-title {
+                flex-wrap: wrap;
+            }
+
+            #scenario-default-badge {
+                max-width: 100%;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                line-height: 1.4;
+            }
+
+            #fpn-main > .card:first-child .input-group {
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+            }
+
+            #distribution-charts-panel,
+            #distribution-charts-panel .chart-card {
+                min-width: 0;
+            }
+
+            #distribution-charts-panel .chart-title {
+                flex-wrap: wrap;
+            }
+
+            #distribution-charts-panel .chart-title > span:last-child {
+                white-space: normal;
+            }
+
+            #fpn-main .control-panel {
+                justify-content: flex-start;
+            }
+
+            #fpn-main .control-panel > div {
+                min-width: 0;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <div class="header-title">
+            <h1>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                通用正向推理矩陣計算器
+                <span class="badge-tag">AI & Soft Computing</span>
+            </h1>
+            <p>模糊 Petri 網 (FPN) 狀態轉移矩陣運算 · 直線變遷拓撲 · 算式逐步分解與收斂軌跡分析</p>
+        </div>
+        <nav class="workspace-toggle" aria-label="計算器分頁">
+            <button class="workspace-btn" id="btn-workspace-matrix" type="button" onclick="switchWorkspace('matrix')">單一矩陣運算</button>
+            <button class="workspace-btn active" id="btn-workspace-fpn" type="button" onclick="switchWorkspace('fpn')">FPN 正向推理</button>
+            <button class="workspace-btn" id="btn-workspace-paper" type="button" onclick="switchWorkspace('paper')">Max-Min 逆模糊計算器</button>
+        </nav>
+    </div>
+</header>
+
+<main class="main-container" id="fpn-main">
+    <!-- LEFT PANEL: Inputs & Matrix Definitions -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span>模型設定與初始狀態</span>
+                <span class="badge badge-blue" id="scenario-default-badge">本書預設值</span>
+            </div>
+        </div>
+        <div class="preset-bar">
+            <section class="preset-section preset-custom-section" aria-labelledby="custom-mode-heading">
+                <h2 class="preset-section-heading" id="custom-mode-heading">自訂模型</h2>
+                <p class="preset-section-description">自行設定模型參數與初始信念，建立符合需求的推理網路。</p>
+                <div class="preset-custom-controls">
+                    <button class="btn btn-primary" id="btn-preset-custom" type="button" onclick="loadPreset('custom')">載入自訂模型</button>
+                    <div class="mode-toggle" aria-label="信念表示方式">
+                        <button class="mode-btn active" id="btn-mode-scalar" type="button" onclick="switchMode('scalar')">純量數值 (Scalar)</button>
+                        <button class="mode-btn" id="btn-mode-vector" type="button" onclick="switchMode('vector')">離散分佈 (Vector)</button>
+                    </div>
+                </div>
+            </section>
+            <section class="preset-section preset-scenarios-section" aria-labelledby="scenario-examples-heading">
+                <h2 class="preset-section-heading" id="scenario-examples-heading">三情境範例</h2>
+                <p class="preset-section-description">載入教科書範例模型；載入範例會取代目前的模型設定。</p>
+                <div class="scenario-example-grid">
+                    <article class="scenario-example">
+                        <div>
+                            <div class="scenario-example-title">身材與體能推論</div>
+                            <div class="scenario-example-reference">Fig. 10.2</div>
+                        </div>
+                        <button class="btn btn-sm" id="btn-preset-scenario1" type="button" onclick="loadPreset('scenario1')">載入情境一</button>
+                    </article>
+                    <article class="scenario-example">
+                        <div>
+                            <div class="scenario-example-title">命案偵查與嫌疑判定</div>
+                            <div class="scenario-example-reference">Fig. 10.8</div>
+                        </div>
+                        <button class="btn btn-sm" id="btn-preset-scenario2" type="button" onclick="loadPreset('scenario2')">載入情境二</button>
+                    </article>
+                    <article class="scenario-example">
+                        <div>
+                            <div class="scenario-example-title">全波整流電路診斷</div>
+                            <div class="scenario-example-reference">Fig. 10.10</div>
+                        </div>
+                        <button class="btn btn-sm" id="btn-preset-scenario3" type="button" onclick="loadPreset('scenario3')">載入情境三</button>
+                    </article>
+                </div>
+            </section>
+            <div class="preset-actions" aria-label="模型資料工具">
+                <span class="preset-actions-label">模型資料工具</span>
+                <button class="btn btn-sm" type="button" onclick="resetToZero()">清空歸零</button>
+                <button class="btn btn-sm" type="button" onclick="resetToDefault()">重設自訂預設</button>
+                <button class="btn btn-sm" type="button" onclick="exportSettingsJSON()">匯出 JSON</button>
+                <button class="btn btn-sm" type="button" onclick="document.getElementById('import-json-input').click()">匯入 JSON</button>
+                <input type="file" id="import-json-input" accept=".json,application/json" hidden onchange="importSettingsJSON(this.files[0])">
+            </div>
+        </div>
+        <!-- Dynamic Topology Configurator Controls -->
+        <div class="topology-config-box">
+            <div class="config-row">
+                <span class="label">位置數量 (Places N):</span>
+                <div class="num-stepper">
+                    <button class="btn-stepper" onclick="adjustPlaceCount(-1)">−</button>
+                    <span class="stepper-val" id="cfg-place-count">4</span>
+                    <button class="btn-stepper" onclick="adjustPlaceCount(1)">+</button>
+                </div>
+            </div>
+            <div class="config-row">
+                <span class="label">變遷數量 (Transitions M):</span>
+                <div class="num-stepper">
+                    <button class="btn-stepper" onclick="adjustTransCount(-1)">−</button>
+                    <span class="stepper-val" id="cfg-trans-count">3</span>
+                    <button class="btn-stepper" onclick="adjustTransCount(1)">+</button>
+                </div>
+            </div>
+            <div class="config-row">
+                <span class="label">收斂迭代上限 (Max Steps):</span>
+                <div class="num-stepper">
+                    <button class="btn-stepper" onclick="adjustMaxSteps(-5)">−</button>
+                    <span class="stepper-val" id="cfg-max-steps" style="width:40px;">25</span>
+                    <button class="btn-stepper" onclick="adjustMaxSteps(5)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('tab-beliefs', this)">初始信念 N(0)</button>
+            <button class="tab-btn" onclick="switchTab('tab-matrices', this)">連通矩陣 P, Q, R</button>
+            <button class="tab-btn" onclick="switchTab('tab-thresholds', this)">變遷門檻 Th</button>
+            <button class="tab-btn" onclick="switchTab('tab-math-docs', this)">演算法規範</button>
+        </div>
+
+        <!-- Tab 1: Beliefs Input -->
+        <div id="tab-beliefs" class="tab-pane active">
+            <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 8px;">
+                點擊標籤可切換位置屬性（<span style="color:#1d4ed8; font-weight:600;">公理</span> / <span style="color:#475569; font-weight:600;">中介</span> / <span style="color:#dc2626; font-weight:600;">結論</span>），滑動調整初始信念：
+            </p>
+            <div class="input-group" id="belief-inputs-container">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Tab 2: Matrices P & Q & R -->
+        <div id="tab-matrices" class="tab-pane">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+                <button class="btn btn-sm btn-primary" onclick="validateAndNormalizeModel()">檢查／正規化矩陣</button>
+                <button class="btn btn-sm" onclick="exportSettingsCSV()">匯出 CSV</button>
+            </div>
+            <div id="matrix-validation-status" class="validation-status" role="status"></div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; display:flex; justify-content:space-between;">
+                <b>輸入連通矩陣 Q (M×N) [位置 → 變遷]</b>
+                <span style="color:var(--text-muted); font-size:0.7rem;">點擊切換 0/1</span>
+            </div>
+            <div class="matrix-table-container" style="margin-bottom: 12px;">
+                <table class="matrix-table" id="matrix-q-table"></table>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; display:flex; justify-content:space-between;">
+                <b>輸出連通矩陣 P (N×M) [變遷 → 位置]</b>
+                <span style="color:var(--text-muted); font-size:0.7rem;">點擊切換 0/1</span>
+            </div>
+            <div class="matrix-table-container" style="margin-bottom: 12px;">
+                <table class="matrix-table" id="matrix-p-table"></table>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <b>規則可信度矩陣 R (M×M 對角權重)</b>
+            </div>
+            <div class="matrix-table-container">
+                <table class="matrix-table" id="matrix-r-table"></table>
+            </div>
+        </div>
+
+        <!-- Tab 3: Thresholds -->
+        <div id="tab-thresholds" class="tab-pane">
+            <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 8px;">
+                各規則變遷點火門檻 $Th_j \in [0, 1]$。當前件滿足度達標時變遷方可傳遞：$U(\text{Temp}_j - Th_j)$。
+            </p>
+            <div class="input-group" id="threshold-inputs-container">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Tab 4: Mathematical Docs -->
+        <div id="tab-math-docs" class="tab-pane">
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.75rem; color:var(--text-secondary);">
+                <div style="background:var(--bg-card-alt); padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle);">
+                    <b style="color:var(--blue-primary);">Chapter 10 狀態轉移方程 (Equation 10.8)：</b>
+                    <div id="math-formula-full" style="margin: 6px 0; overflow-x: auto;"></div>
+                </div>
+                <div>
+                    <b>符號定義：</b>
+                    <ul style="padding-left: 18px; margin-top: 4px; line-height: 1.55;">
+                        <li>$N(t)$：時間步 $t$ 各命題位置的模糊信念向量。</li>
+                        <li>$N^c(t) = 1 - N(t)$：補數運算，結合 Max-Min 達成模糊邏輯合取 $\min$。</li>
+                        <li>$\text{Temp}(t) = R \circ (Q' \circ N^c(t))^c$：變遷輸入條件之滿足程度。</li>
+                        <li>$\Delta N(t) = P' \circ [\text{Temp} \wedge U(\text{Temp}-Th)]$：變遷激發傳遞之增量。</li>
+                        <li>$N(t+1) = N(t) \vee \Delta N(t)$：單調遞增狀態更新，直到 $N(t+1)=N(t)$ 穩態收斂。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Formula Box -->
+        <div style="background: var(--bg-card-alt); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 0.72rem;">
+            <div style="color: var(--blue-primary); font-weight: 600; margin-bottom: 4px;">公式 (10.8) 矩陣迭代方程：</div>
+            <div id="math-formula-box" style="color: var(--text-secondary); overflow-x: auto;"></div>
+        </div>
+        <div class="run-panel">
+            <button class="btn btn-primary run-btn" id="btn-run-inference" onclick="runFullInference()">執行完整推理</button>
+            <button class="btn btn-success run-btn" id="btn-run-step" onclick="runSingleInference()">執行單步</button>
+            <span class="run-status" id="run-status">模型已載入，等待執行</span>
+        </div>
+    </div>
+
+    <!-- CENTER PANEL: Graph Canvas, Player & Decision Board -->
+    <div class="card center-col">
+        <div class="card-header">
+            <div class="card-title">
+                <span>正向推理結果</span>
+                <span class="badge badge-green" id="steady-badge">已達穩態</span>
+            </div>
+        </div>
+
+        <!-- Decision Banner -->
+        <div class="decision-box highlight-decision" id="decision-banner" aria-live="polite">
+            <div class="decision-title">
+                <span>穩態推理結論</span>
+                <span id="decision-status" class="badge badge-green">已收斂</span>
+            </div>
+            <div class="decision-result" id="decision-culprit-text">判定中...</div>
+            <div class="decision-reasoning" id="decision-explanation-text">
+                正在進行正向推理運算...
+            </div>
+        </div>
+
+        <div class="inline-report" id="inline-inference-report">
+            <div class="inline-report-header">
+                <span>推理計算摘要</span>
+                <span class="badge badge-blue" id="inline-report-status">等待執行</span>
+            </div>
+            <pre class="inline-report-content" id="inline-report-content">請先按「執行完整推理」以顯示計算報告。</pre>
+        </div>
+
+        <!-- Double Charts Panel -->
+        <div class="chart-container" id="distribution-charts-panel">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>各位置信念收斂軌跡</span>
+                    <span style="color:var(--blue-primary);">Nᵢ(t) vs t</span>
+                </div>
+                <canvas id="chart-trajectory" class="fpn-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span id="chart-2-title">各位置穩態信念值</span>
+                    <span style="color:var(--emerald-primary);">n⁎(k)</span>
+                </div>
+                <canvas id="chart-distribution" class="fpn-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="card-header" style="margin-top:4px;">
+            <div class="card-title"><span>正向推理拓樸</span></div>
+            <button class="btn btn-sm btn-primary" onclick="toggleExplanationTrace()" id="btn-trace">溯源解釋路徑</button>
+        </div>
+
+        <!-- SVG Visualizer (Pure Straight Lines Layout) -->
+        <div class="graph-container">
+            <svg id="fpn-svg" viewBox="0 0 800 430">
+                <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
+                    </marker>
+                    <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#1d4ed8" />
+                    </marker>
+                    <marker id="arrow-traced" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#059669" />
+                    </marker>
+                </defs>
+                <g id="svg-arcs"></g>
+                <g id="svg-transitions"></g>
+                <g id="svg-places"></g>
+            </svg>
+        </div>
+
+        <!-- Execution Control Toolbar -->
+        <div class="control-panel">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="step-counter" id="step-counter-text">
+                    <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--blue-primary);"></span>
+                    檢視步驟：t = 0 / 3
+                </span>
+                <input type="range" id="step-scrubber" min="0" max="3" value="0" style="width: 90px;" oninput="scrubToStep(this.value)">
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items:center;">
+                <button class="btn btn-sm" onclick="stepPrevious()" id="btn-prev" disabled>
+                    ⏮ 上一步
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="stepNext()" id="btn-next">
+                    ⏭ 下一步
+                </button>
+                <button class="btn btn-sm" onclick="jumpToSteady()">
+                    ⏩ 直達穩態
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT PANEL: Step-by-Step Matrix Decomposition Logs -->
+    <div class="card right-col">
+        <div class="card-header">
+            <div class="card-title">
+                <span>矩陣運算詳細分解歷程</span>
+                <span class="badge badge-blue" id="log-step-count-badge">共 3 步收斂</span>
+            </div>
+        </div>
+
+        <div class="trace-logs" id="trace-log-container">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</main>
+
+<main class="main-container utility-workbench" id="matrix-workbench" aria-label="單一矩陣運算">
+    <section class="card">
+        <div class="card-header"><div class="card-title">單一矩陣輸入</div></div>
+        <p style="color:var(--text-muted); margin-bottom:12px;">設定列數與欄數（1 至 27），輸入實數矩陣後選擇運算。</p>
+        <div style="display:flex; align-items:end; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <label style="display:flex; flex-direction:column; gap:4px;">列數<input id="numeric-matrix-rows" class="num-input" type="number" min="1" max="27" value="3" aria-label="矩陣列數"></label>
+            <span style="padding-bottom:7px;">×</span>
+            <label style="display:flex; flex-direction:column; gap:4px;">欄數<input id="numeric-matrix-cols" class="num-input" type="number" min="1" max="27" value="3" aria-label="矩陣欄數"></label>
+            <button class="btn btn-primary" type="button" onclick="resizeNumericMatrix()">套用尺寸</button>
+            <button class="btn" type="button" onclick="clearNumericMatrix()">清空</button>
+        </div>
+        <div id="numeric-matrix-size" style="font:0.8rem var(--font-mono); color:var(--text-muted); margin-bottom:6px;">3 × 3</div>
+        <div id="numeric-matrix-inputs" class="utility-input-grid" aria-label="矩陣輸入格"></div>
+    </section>
+    <section class="card">
+        <div class="card-header"><div class="card-title">矩陣運算</div></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <button class="btn" onclick="calculateNumericMatrix('transpose')">轉置</button>
+            <button class="btn" onclick="calculateNumericMatrix('determinant')">行列式</button>
+            <button class="btn" onclick="calculateNumericMatrix('inverse')">反矩陣</button>
+            <button class="btn" onclick="calculateNumericMatrix('rank')">矩陣秩</button>
+            <button class="btn" onclick="calculateNumericMatrix('rref')">列簡化</button>
+        </div>
+        <div id="numeric-matrix-result-title" style="font-weight:700; margin-bottom:6px;">運算結果</div>
+        <div id="numeric-matrix-message" class="run-status" role="status">輸入矩陣後選擇運算。</div>
+        <div id="numeric-matrix-result" style="overflow:auto; max-width:100%;"></div>
+    </section>
+</main>
+
+<main class="main-container utility-workbench" id="paper-workbench" aria-label="Max-Min 逆模糊計算器">
+    <section class="card">
+        <div class="card-header"><div class="card-title">Max-Min 逆模糊計算器</div><span class="badge badge-blue">Q ◦ A ≈ I</span></div>
+        <p style="color:var(--text-muted); margin-bottom:10px;">輸入模糊矩陣 A（元素介於 0 與 1），求逆關係矩陣 Q，並檢視重建結果及距離分析。</p>
+        <details class="inverse-guide" open>
+            <summary>Hamming 距離：目標函數、解析算法與結果解讀</summary>
+            <div class="inverse-guide-content">
+                <div>
+                    <b>1. Max-Min 輸出與 Hamming 成本</b>
+                    <div class="inverse-equation">b′ⱼ = maxᵢ min(xᵢ, aᵢⱼ),　j=1,…,n</div>
+                    <div>已知 A∈[0,1]ᵐˣⁿ，未知列向量 x∈[0,1]ᵐ。先用 max-min 合成得到預測輸出 b′=x◦A，再把每個分量與指定目標 b 比較。</div>
+                    <div class="inverse-equation">D(x◦A,b) = Σⱼ₌₁ⁿ |bⱼ − b′ⱼ|</div>
+                    <div>這個未正規化的絕對誤差總和就是 Cost Function／Goodness Measure：成本越低，近似解越好；D=0 表示每個分量都完全符合目標。單列距離範圍是 [0,n]。</div>
+                </div>
+                <div>
+                    <b>2. 逆關係的整體最佳化</b>
+                    <div class="inverse-equation">Dₖ* = minₓ∈[0,1]ᵐ D(x◦A,eₖ),　k=1,…,n</div>
+                    <div class="inverse-equation">D(Q◦A,I) = Σₖ₌₁ⁿ Dₖ*,　0 ≤ D(Q◦A,I) ≤ n²</div>
+                    <div>每一列 q⁽ᵏ⁾ 分別對應單位向量 eₖ；總距離是 n 個目標列成本的總和，因此比較不同欄數的矩陣時，須留意總距離也會隨目標列數增加。除以 n² 可作 0 到 1 的尺度參考，但此工具顯示的最佳化成本仍是原始總和。</div>
+                    <b>精確解判準</b>
+                    <div>A 的每個單位向量列 e₁,…,eₙ 都出現時，精確逆關係存在；此時 Q◦A=I 且總距離為 0。否則顯示最佳近似解。</div>
+                </div>
+                <div>
+                    <b>3. 解析算法為何只檢查折點</b>
+                    <div>針對每個目標 eₖ，先把 A 的第 k 欄換到第一欄。固定一個 A 的列 i，令該解只有第 i 個分量為 t，其餘分量為 0，則該候選解的距離為：</div>
+                    <div class="inverse-equation">Eᵢ,ₖ(t) = 1 − min(t,aᵢₖ) + Σⱼ≠ₖ min(t,aᵢⱼ),　0≤t≤1</div>
+                    <div>min(t,a) 只會在 t=a 改變斜率，因此 Eᵢ,ₖ(t) 是分段線性函數。每一段的最小值必在端點，故只需比較 t=0、t=1 與該列 A 元素形成的折點。論文的下界結果指出，任意向量解的成本不會低於某個單列候選 Eᵢ,ₖ(t)；而把 x 設成只有第 i 項為 t，就能實際達到該候選成本。因此比較所有 i 與折點 t，所得最低值就是全域最小成本。若有並列最佳值，結果表顯示其中一組。</div>
+                </div>
+                <div>
+                    <b>4. 範例：逐項計算近似成本</b>
+                    <div class="inverse-equation">A = [[0.3,0.5],[0.7,0.8],[0.8,0.9]]</div>
+                    <div>對 e₂=[0,1]，一組最佳解取第 1 列、t=0.5，即 x=[0.5,0,0]。Max-Min 輸出為 b′=[min(0.5,0.3),min(0.5,0.5)]=[0.3,0.5]；逐項誤差為 [|0−0.3|,|1−0.5|]=[0.3,0.5]，故 D₂=0.8。對 e₁ 的最佳距離為 1，所以總距離 1+0.8=1.8。載入「範例 2：近似解」可查看完整矩陣、誤差表和長條圖。</div>
+                </div>
+                <div>
+                    <b>5. 如何讀取本次運算結果</b>
+                    <div>「逆關係矩陣 Q」是求得的解；「重建矩陣 Q◦A」是把解代回公式的實際輸出。逐項表列出目標 b、重建 b′、各分量 |b−b′| 和列距離 Dₖ；圖表以熱度比較矩陣值，以長條長度比較各目標列成本。綠色零距離代表精確符合，橘色正距離代表仍有誤差，總距離越低整體越接近 I。</div>
+                    <div>自訂操作：輸入列數 m、欄數 n，按「套用」，再填入 [0,1] 內數值並按「計算並顯示結果」。上方範例按鈕會取代自訂矩陣目前內容；範例和自訂矩陣計算後均顯示同一組數值表和圖表。</div>
+                </div>
+            </div>
+        </details>
+        <div class="paper-example-tools" aria-label="範例矩陣">
+            <span class="paper-example-tools-label">載入範例（會取代下方矩陣內容）</span>
+            <button class="btn" onclick="loadPaperExample('exact')">範例 1：精確解（論文 Example 4.1）</button>
+            <button class="btn" onclick="loadPaperExample('approx')">範例 2：近似解（論文 Example 3.1）</button>
+        </div>
+        <div class="paper-custom-matrix">
+            <div class="paper-custom-matrix-title">自訂矩陣 A</div>
+            <div style="display:flex; align-items:end; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+                <label style="display:flex; flex-direction:column; gap:4px;">列數 m<input id="paper-matrix-rows" class="num-input" type="number" min="1" max="27" value="6" aria-label="列數 m"></label>
+                <span style="padding-bottom:7px;">×</span>
+                <label style="display:flex; flex-direction:column; gap:4px;">欄數 n<input id="paper-matrix-cols" class="num-input" type="number" min="1" max="27" value="3" aria-label="欄數 n"></label>
+                <button class="btn btn-primary" onclick="resizePaperMatrix()">套用</button>
+            </div>
+            <div id="paper-matrix-size" style="font:0.8rem var(--font-mono); color:var(--text-muted); margin-bottom:6px;">A: 6 × 3</div>
+            <div id="paper-matrix-inputs" class="utility-input-grid" aria-label="模糊矩陣 A 輸入格"></div>
+            <div id="paper-matrix-message" class="run-status" role="status" style="margin-top:8px;">矩陣元素需介於 [0, 1]。</div>
+            <div style="display:flex; justify-content:flex-end; margin-top:12px;"><button class="btn btn-primary run-btn" onclick="solvePaperInverseRelation()">計算並顯示結果</button></div>
+        </div>
+    </section>
+    <section class="card" id="paper-result-panel">
+        <div class="card-header"><div class="card-title">計算結果</div><span id="paper-result-status" class="badge badge-blue">尚未計算</span></div>
+        <div id="paper-result-summary" class="run-status">計算後顯示 Q、重建結果、Hamming 分解與圖表。</div>
+        <div id="paper-result-content"></div>
+    </section>
+</main>
+
+<script>
+/**
+ * -------------------------------------------------------------
+ * 1. GENERAL FPN TOPOLOGY & SCENARIOS
+ * -------------------------------------------------------------
+ */
+
+let activePlaces = [];
+let activeTransitions = [];
+let matrix_P = [];
+let matrix_Q = [];
+let matrix_R = [];
+let numericMatrix = [[1, 2, 3], [0, 1, 4], [5, 6, 0]];
+let paperRelationMatrix = [
+    [0, 0, 1], [0.1, 0.8, 0.5], [1, 0, 0],
+    [0.1, 0.5, 1], [0, 1, 0], [1, 0, 0]
+];
+let transitionThresholds = [];
+let initialBeliefsScalar = [];
+let initialBeliefsVector = [];
+let maxAllowedSteps = 25;
+
+let currentMode = 'scalar'; // 'scalar' | 'vector'
+let simulationChain = [];
+let viewedStepIndex = 0;
+let showTracePath = true;
+let currentScenarioKey = 'custom';
+let modelDirty = true;
+
+// Predefined Scenarios matching Chapter 10 & 23 of textbook
+const SCENARIOS = {
+    custom: {
+        name: '自訂模式 (Custom Mode)',
+        description: '使用者可自由設定位置數、變遷數、收斂迭代上限與矩陣連線。',
+        places: [
+            { id: 'p1', name: 'p1: 初始條件 A', desc: '公理 1', label: 'p1', isAxiom: true, isConclusion: false },
+            { id: 'p2', name: 'p2: 初始條件 B', desc: '公理 2', label: 'p2', isAxiom: true, isConclusion: false },
+            { id: 'p3', name: 'p3: 中間命題', desc: '中介導出態', label: 'p3', isAxiom: false, isConclusion: false },
+            { id: 'p4', name: 'p4: 目標結論', desc: '推論目標結論', label: 'p4', isAxiom: false, isConclusion: true }
+        ],
+        transitions: [
+            { id: 'tr1', name: 'tr1', inputs: [0], outputs: [2] },      // p1 -> p3
+            { id: 'tr2', name: 'tr2', inputs: [1, 2], outputs: [3] },   // p2, p3 -> p4
+            { id: 'tr3', name: 'tr3', inputs: [2], outputs: [3] }       // p3 -> p4
+        ],
+        P: [
+            [0, 0, 0], // p1
+            [0, 0, 0], // p2
+            [1, 0, 0], // p3
+            [0, 1, 1]  // p4
+        ],
+        Q: [
+            [1, 0, 0, 0], // tr1: p1
+            [0, 1, 1, 0], // tr2: p2, p3
+            [0, 0, 1, 0]  // tr3: p3
+        ],
+        R: [1.0, 1.0, 1.0],
+        Th: [0.0, 0.0, 0.0],
+        N_scalar: [0.8, 0.6, 0.0, 0.0],
+        N_vector: [
+            [0.7, 0.8, 0.85, 0.9],
+            [0.5, 0.6, 0.65, 0.7],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ]
+    },
+    scenario1: {
+        name: '情境一：身材體能推論模型 (Chapter 10.2 / Fig 10.2)',
+        description: 'Tall, Stout, Fast-runner, Pulse-rate 經典體能關係正向推論。',
+        places: [
+            { id: 'p1', name: 'p1: 身材高大 (Tall)', desc: '公理條件 1', label: '高大', isAxiom: true, isConclusion: false },
+            { id: 'p2', name: 'p2: 體型粗壯 (Stout)', desc: '公理/回授條件', label: '粗壯', isAxiom: true, isConclusion: false },
+            { id: 'p3', name: 'p3: 快跑者 (Fast-runner)', desc: '中間推論態', label: '快跑者', isAxiom: false, isConclusion: false },
+            { id: 'p4', name: 'p4: 心率正常 (Pulse-rate)', desc: '終端結論', label: '心率正常', isAxiom: false, isConclusion: true }
+        ],
+        transitions: [
+            { id: 'tr1', name: 'tr1', inputs: [0, 1], outputs: [2] }, // p1, p2 -> p3
+            { id: 'tr2', name: 'tr2', inputs: [2], outputs: [1, 3] }   // p3 -> p2, p4
+        ],
+        P: [
+            [0, 0], // p1
+            [0, 1], // p2
+            [1, 0], // p3
+            [0, 1]  // p4
+        ],
+        Q: [
+            [1, 1, 0, 0], // tr1: p1, p2
+            [0, 0, 1, 0]  // tr2: p3
+        ],
+        R: [1.0, 1.0],
+        Th: [0.0, 0.0],
+        N_scalar: [0.8, 0.6, 0.0, 0.0],
+        N_vector: [
+            [0.2, 0.4, 0.6, 0.8],
+            [0.1, 0.2, 0.9, 0.2],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ]
+    },
+    scenario2: {
+        name: '情境二：命案偵查與嫌疑人判定 (Chapter 10.4 & 23 / Fig 10.8)',
+        description: '7 個位置、6 變遷，精準 5 步收斂至 Ram / Lata 嫌疑判定與 reducenet 溯源。',
+        places: [
+            { id: 'p1', name: 'p1: 愛意 Loves(r,s)', desc: 'Ram 愛 Sita', label: '愛意', isAxiom: true, isConclusion: false },
+            { id: 'p2', name: 'p2: 外遇 Loves(l,r)', desc: 'Lata 愛 Ram', label: '外遇', isAxiom: true, isConclusion: false },
+            { id: 'p3', name: 'p3: 怨恨 Hates(r,s)', desc: 'Ram 恨 Sita', label: '怨恨', isAxiom: false, isConclusion: false },
+            { id: 'p4', name: 'p4: 虐待 Tortures(r,s)', desc: 'Ram 折磨 Sita (迴圈)', label: '虐待', isAxiom: false, isConclusion: false },
+            { id: 'p5', name: 'p5: 嫌疑：Lata 謀殺', desc: 'Murdered(l,s) 結論', label: 'Lata行凶', isAxiom: false, isConclusion: true },
+            { id: 'p6', name: 'p6: 關係緊張 Strained', desc: '夫妻關係緊張 (迴圈)', label: '緊張', isAxiom: false, isConclusion: false },
+            { id: 'p7', name: 'p7: 嫌疑：Ram 謀殺', desc: 'Murdered(r,s) 結論', label: 'Ram行凶', isAxiom: false, isConclusion: true }
+        ],
+        transitions: [
+            { id: 'tr1', name: 'tr1', inputs: [0], outputs: [2] },
+            { id: 'tr2', name: 'tr2', inputs: [1, 2], outputs: [4] },
+            { id: 'tr3', name: 'tr3', inputs: [2], outputs: [3] },
+            { id: 'tr4', name: 'tr4', inputs: [3], outputs: [5] },
+            { id: 'tr5', name: 'tr5', inputs: [5], outputs: [3] },
+            { id: 'tr6', name: 'tr6', inputs: [2, 5], outputs: [6] }
+        ],
+        P: [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 1, 0],
+            [0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 1]
+        ],
+        Q: [
+            [1, 0, 0, 0, 0, 0, 0],
+            [0, 1, 1, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 0, 0, 1, 0]
+        ],
+        R: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        Th: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        N_scalar: [0.8, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0],
+        N_vector: [
+            [0.6, 0.7, 0.8, 0.85],
+            [0.1, 0.15, 0.2, 0.25],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ]
+    },
+    scenario3: {
+        name: '情境三：全波整流電路故障診斷 (Chapter 10.5 / Fig 10.10)',
+        description: '9 個位置、9 變遷，涵蓋變壓器異常、二極體故障與輸出電壓之電氣診斷。',
+        places: [
+            { id: 'p1', name: 'p1: 變壓器損壞', desc: 'Defective Transformer', label: '變壓器', isAxiom: true, isConclusion: false },
+            { id: 'p2', name: 'p2: 初級230V正常', desc: 'Close-to Primary 230V', label: '初級電壓', isAxiom: true, isConclusion: false },
+            { id: 'p3', name: 'p3: 整流器損壞', desc: 'Defective Rectifier', label: '整流器', isAxiom: true, isConclusion: false },
+            { id: 'p4', name: 'p4: 變壓器輸出0V', desc: 'Trans-out 0V', label: '變壓0V', isAxiom: false, isConclusion: false },
+            { id: 'p5', name: 'p5: 次級半週開路', desc: 'Open secondary-coil', label: '次級開路', isAxiom: false, isConclusion: false },
+            { id: 'p6', name: 'p6: 單二極體損壞', desc: 'Defective 1-diode', label: '單管損壞', isAxiom: false, isConclusion: false },
+            { id: 'p7', name: 'p7: 雙二極體損壞', desc: 'Defective 2-diodes', label: '雙管損壞', isAxiom: false, isConclusion: false },
+            { id: 'p8', name: 'p8: 輸出接近0V', desc: 'Close-to rect-out 0V', label: '輸出0V', isAxiom: false, isConclusion: true },
+            { id: 'p9', name: 'p9: 輸出接近10V', desc: 'More-or-less rect-out 10V', label: '輸出10V', isAxiom: false, isConclusion: true }
+        ],
+        transitions: [
+            { id: 'tr1', name: 'tr1', inputs: [0, 1], outputs: [3, 4] },
+            { id: 'tr2', name: 'tr2', inputs: [1, 2], outputs: [5] },
+            { id: 'tr3', name: 'tr3', inputs: [1, 2], outputs: [6] },
+            { id: 'tr4', name: 'tr4', inputs: [3], outputs: [7] },
+            { id: 'tr5', name: 'tr5', inputs: [4], outputs: [8] },
+            { id: 'tr6', name: 'tr6', inputs: [5], outputs: [8] },
+            { id: 'tr7', name: 'tr7', inputs: [6], outputs: [7] },
+            { id: 'tr8', name: 'tr8', inputs: [7], outputs: [7] },
+            { id: 'tr9', name: 'tr9', inputs: [8], outputs: [8] }
+        ],
+        P: [
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,0,0],
+            [0,1,0,0,0,0,0,0,0],
+            [0,0,1,0,0,0,0,0,0],
+            [0,0,0,1,0,0,1,1,0],
+            [0,0,0,0,1,1,0,0,1]
+        ],
+        Q: [
+            [1,1,0,0,0,0,0,0,0],
+            [0,1,1,0,0,0,0,0,0],
+            [0,1,1,0,0,0,0,0,0],
+            [0,0,0,1,0,0,0,0,0],
+            [0,0,0,0,1,0,0,0,0],
+            [0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,1,0,0],
+            [0,0,0,0,0,0,0,1,0],
+            [0,0,0,0,0,0,0,0,1]
+        ],
+        R: [0.9, 0.85, 0.85, 0.95, 0.8, 0.9, 0.9, 1.0, 1.0],
+        Th: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        N_scalar: [0.85, 0.95, 0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        N_vector: [
+            [0.7, 0.8, 0.85, 0.9],
+            [0.8, 0.9, 0.95, 0.98],
+            [0.1, 0.15, 0.2, 0.25],
+            [0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]
+        ]
+    }
+};
+
+/**
+ * -------------------------------------------------------------
+ * 2. TOPOLOGY CONFIGURATOR & DYNAMIC NODE ALLOCATION
+ * -------------------------------------------------------------
+ */
+
+function adjustPlaceCount(delta) {
+    updateWithoutPageJump(() => {
+        let count = activePlaces.length + delta;
+        count = Math.max(2, Math.min(12, count));
+        if (count === activePlaces.length) return;
+
+        if (count > activePlaces.length) {
+        // Add places
+        for (let i = activePlaces.length; i < count; i++) {
+            const id = `p${i+1}`;
+            activePlaces.push({
+                id,
+                name: `${id}: 自訂命題 ${i+1}`,
+                desc: '自訂屬性',
+                label: id,
+                isAxiom: i < 2,
+                isConclusion: i >= count - 2
+            });
+            initialBeliefsScalar.push(0.0);
+            initialBeliefsVector.push([0, 0, 0, 0]);
+
+            // Expand matrix P (add a row)
+            matrix_P.push(new Array(activeTransitions.length).fill(0));
+            // Expand matrix Q (add a column to each transition row)
+            matrix_Q.forEach(row => row.push(0));
+        }
+        } else {
+        // Remove places
+        const removeCount = activePlaces.length - count;
+        activePlaces.splice(count, removeCount);
+        initialBeliefsScalar.splice(count, removeCount);
+        initialBeliefsVector.splice(count, removeCount);
+        matrix_P.splice(count, removeCount);
+        matrix_Q.forEach(row => row.splice(count, removeCount));
+    }
+
+        currentScenarioKey = 'custom';
+        updatePresetButtonStates();
+        document.getElementById('cfg-place-count').textContent = activePlaces.length;
+        renderInputControls();
+        renderMatrixTables();
+        calculateLayoutPositions();
+        renderSVGGraph();
+        markModelDirty();
+    });
+}
+
+function adjustTransCount(delta) {
+    updateWithoutPageJump(() => {
+        let count = activeTransitions.length + delta;
+        count = Math.max(1, Math.min(10, count));
+        if (count === activeTransitions.length) return;
+
+        if (count > activeTransitions.length) {
+        for (let j = activeTransitions.length; j < count; j++) {
+            const id = `tr${j+1}`;
+            activeTransitions.push({
+                id,
+                name: id,
+                inputs: [],
+                outputs: []
+            });
+            matrix_R.push(1.0);
+            transitionThresholds.push(0.0);
+
+            // Expand matrix Q (add a row)
+            matrix_Q.push(new Array(activePlaces.length).fill(0));
+            // Expand matrix P (add a column to each place row)
+            matrix_P.forEach(row => row.push(0));
+        }
+        } else {
+        const removeCount = activeTransitions.length - count;
+        activeTransitions.splice(count, removeCount);
+        matrix_R.splice(count, removeCount);
+        transitionThresholds.splice(count, removeCount);
+        matrix_Q.splice(count, removeCount);
+        matrix_P.forEach(row => row.splice(count, removeCount));
+    }
+
+        currentScenarioKey = 'custom';
+        updatePresetButtonStates();
+        document.getElementById('cfg-trans-count').textContent = activeTransitions.length;
+        renderInputControls();
+        renderMatrixTables();
+        calculateLayoutPositions();
+        renderSVGGraph();
+        markModelDirty();
+    });
+}
+
+function adjustMaxSteps(delta) {
+    updateWithoutPageJump(() => {
+        maxAllowedSteps = Math.max(5, Math.min(50, maxAllowedSteps + delta));
+        document.getElementById('cfg-max-steps').textContent = maxAllowedSteps;
+        markModelDirty();
+    });
+}
+
+function togglePlaceRole(idx) {
+    updateWithoutPageJump(() => {
+        const p = activePlaces[idx];
+        if (p.isAxiom) {
+            p.isAxiom = false;
+            p.isConclusion = false;
+        } else if (!p.isAxiom && !p.isConclusion) {
+            p.isAxiom = false;
+            p.isConclusion = true;
+        } else {
+            p.isAxiom = true;
+            p.isConclusion = false;
+        }
+        renderInputControls();
+        calculateLayoutPositions();
+        renderSVGGraph();
+        markModelDirty();
+    });
+}
+
+/**
+ * -------------------------------------------------------------
+ * 3. STRAIGHT-LINE GEOMETRIC LAYOUT ALGORITHM
+ * -------------------------------------------------------------
+ */
+function calculateLayoutPositions() {
+    const W = 800;
+    const H = 430;
+
+    // Special layout override for Scenario 1 (Fig 10.2)
+    if (currentScenarioKey === 'scenario1' && activePlaces.length === 4 && activeTransitions.length === 2) {
+        activePlaces[0].x = 100; activePlaces[0].y = 130; // p1: Tall
+        activePlaces[1].x = 100; activePlaces[1].y = 300; // p2: Stout
+        activePlaces[2].x = 420; activePlaces[2].y = 215; // p3: Fast-runner
+        activePlaces[3].x = 720; activePlaces[3].y = 215; // p4: Pulse-rate
+
+        activeTransitions[0].x = 260; activeTransitions[0].y = 215; // tr1
+        activeTransitions[1].x = 580; activeTransitions[1].y = 215; // tr2
+        return;
+    }
+
+    // Special layout override for Scenario 2 (Fig 10.8)
+    if (currentScenarioKey === 'scenario2' && activePlaces.length === 7 && activeTransitions.length === 6) {
+        activePlaces[0].x = 90;  activePlaces[0].y = 140; // p1
+        activePlaces[1].x = 90;  activePlaces[1].y = 340; // p2
+        activePlaces[2].x = 300; activePlaces[2].y = 180; // p3
+        activePlaces[3].x = 330; activePlaces[3].y = 75;  // p4
+        activePlaces[4].x = 700; activePlaces[4].y = 340; // p5
+        activePlaces[5].x = 520; activePlaces[5].y = 75;  // p6
+        activePlaces[6].x = 700; activePlaces[6].y = 180; // p7
+
+        activeTransitions[0].x = 195; activeTransitions[0].y = 160; // tr1
+        activeTransitions[1].x = 490; activeTransitions[1].y = 340; // tr2
+        activeTransitions[2].x = 315; activeTransitions[2].y = 125; // tr3
+        activeTransitions[3].x = 425; activeTransitions[3].y = 75;  // tr4
+        activeTransitions[4].x = 425; activeTransitions[4].y = 35;  // tr5
+        activeTransitions[5].x = 610; activeTransitions[5].y = 180; // tr6
+        return;
+    }
+
+    // Special layout override for Scenario 3 (Fig 10.10)
+    if (currentScenarioKey === 'scenario3' && activePlaces.length === 9 && activeTransitions.length === 9) {
+        activePlaces[0].x = 90;  activePlaces[0].y = 90;  // p1
+        activePlaces[1].x = 90;  activePlaces[1].y = 215; // p2
+        activePlaces[2].x = 90;  activePlaces[2].y = 340; // p3
+
+        activeTransitions[0].x = 210; activeTransitions[0].y = 130; // tr1
+        activeTransitions[1].x = 210; activeTransitions[1].y = 250; // tr2
+        activeTransitions[2].x = 210; activeTransitions[2].y = 340; // tr3
+
+        activePlaces[3].x = 340; activePlaces[3].y = 80;  // p4
+        activePlaces[4].x = 340; activePlaces[4].y = 170; // p5
+        activePlaces[5].x = 340; activePlaces[5].y = 260; // p6
+        activePlaces[6].x = 340; activePlaces[6].y = 350; // p7
+
+        activeTransitions[3].x = 470; activeTransitions[3].y = 80;  // tr4
+        activeTransitions[4].x = 470; activeTransitions[4].y = 170; // tr5
+        activeTransitions[5].x = 470; activeTransitions[5].y = 260; // tr6
+        activeTransitions[6].x = 470; activeTransitions[6].y = 350; // tr7
+
+        activePlaces[7].x = 610; activePlaces[7].y = 150; // p8
+        activePlaces[8].x = 610; activePlaces[8].y = 290; // p9
+
+        activeTransitions[7].x = 730; activeTransitions[7].y = 150; // tr8
+        activeTransitions[8].x = 730; activeTransitions[8].y = 290; // tr9
+        return;
+    }
+
+    // General Custom Topology Layout
+    const axioms = [];
+    const intermediates = [];
+    const conclusions = [];
+
+    activePlaces.forEach((p, idx) => {
+        if (p.isAxiom) axioms.push(idx);
+        else if (p.isConclusion) conclusions.push(idx);
+        else intermediates.push(idx);
+    });
+
+    const xAxioms = 90;
+    const xTr1 = 230;
+    const xInter = 390;
+    const xTr2 = 550;
+    const xConc = 700;
+
+    axioms.forEach((pIdx, i) => {
+        const total = axioms.length;
+        const step = (H - 120) / Math.max(1, total - 1);
+        activePlaces[pIdx].x = xAxioms;
+        activePlaces[pIdx].y = total === 1 ? H / 2 : 70 + i * step;
+    });
+
+    conclusions.forEach((pIdx, i) => {
+        const total = conclusions.length;
+        const step = (H - 120) / Math.max(1, total - 1);
+        activePlaces[pIdx].x = xConc;
+        activePlaces[pIdx].y = total === 1 ? H / 2 : 70 + i * step;
+    });
+
+    intermediates.forEach((pIdx, i) => {
+        const total = intermediates.length;
+        const step = (H - 120) / Math.max(1, total - 1);
+        activePlaces[pIdx].x = xInter;
+        activePlaces[pIdx].y = total === 1 ? H / 2 : 70 + i * step;
+    });
+
+    const midPointTr = Math.ceil(activeTransitions.length / 2);
+    activeTransitions.forEach((tr, j) => {
+        if (j < midPointTr) {
+            tr.x = xTr1;
+            const total = midPointTr;
+            const step = (H - 140) / Math.max(1, total - 1);
+            tr.y = total === 1 ? H / 2 : 80 + j * step;
+        } else {
+            tr.x = xTr2;
+            const total = activeTransitions.length - midPointTr;
+            const idxInGroup = j - midPointTr;
+            const step = (H - 140) / Math.max(1, total - 1);
+            tr.y = total === 1 ? H / 2 : 80 + idxInGroup * step;
+        }
+    });
+}
+
+/**
+ * -------------------------------------------------------------
+ * 4. MATHEMATICAL FORWARD REASONING ENGINE (Chapter 10.4)
+ * -------------------------------------------------------------
+ */
+
+function comp(x) {
+    if (Array.isArray(x)) return x.map(v => Math.round((1.0 - v) * 10000) / 10000);
+    return Math.round((1.0 - x) * 10000) / 10000;
+}
+
+function vecComplement(vec) {
+    return vec.map(val => comp(val));
+}
+
+function maxMinCompScalar(matrix, vector) {
+    const rows = matrix.length;
+    const cols = matrix[0]?.length || 0;
+    const result = new Array(rows).fill(0);
+
+    for (let i = 0; i < rows; i++) {
+        let maxVal = 0;
+        for (let j = 0; j < cols; j++) {
+            if (matrix[i][j] > 0) {
+                const term = Math.min(matrix[i][j], vector[j] !== undefined ? vector[j] : 0);
+                if (term > maxVal) maxVal = term;
+            }
+        }
+        result[i] = Math.round(maxVal * 10000) / 10000;
+    }
+    return result;
+}
+
+function maxMinCompVector(matrix, vectorArr) {
+    const rows = matrix.length;
+    const cols = matrix[0]?.length || 0;
+    const zLen = vectorArr[0]?.length || 4;
+    const result = [];
+
+    for (let i = 0; i < rows; i++) {
+        const rowVec = new Array(zLen).fill(0);
+        for (let k = 0; k < zLen; k++) {
+            let maxVal = 0;
+            for (let j = 0; j < cols; j++) {
+                if (matrix[i][j] > 0) {
+                    const term = Math.min(matrix[i][j], vectorArr[j]?.[k] !== undefined ? vectorArr[j][k] : 0);
+                    if (term > maxVal) maxVal = term;
+                }
+            }
+            rowVec[k] = Math.round(maxVal * 10000) / 10000;
+        }
+        result.push(rowVec);
+    }
+    return result;
+}
+
+function vectorsEqual(v1, v2) {
+    if (currentMode === 'scalar') {
+        for (let i = 0; i < v1.length; i++) {
+            if (Math.abs(v1[i] - v2[i]) > 0.0001) return false;
+        }
+        return true;
+    } else {
+        for (let i = 0; i < v1.length; i++) {
+            for (let j = 0; j < v1[i].length; j++) {
+                if (Math.abs(v1[i][j] - v2[i][j]) > 0.0001) return false;
+            }
+        }
+        return true;
+    }
+}
+
+function cloneVal(v) {
+    return JSON.parse(JSON.stringify(v));
+}
+
+function clampUnit(value, fallback = 0) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.max(0, Math.min(1, number));
+}
+
+function resizeArray(values, length, factory) {
+    const result = Array.isArray(values) ? values.slice(0, length) : [];
+    while (result.length < length) result.push(factory(result.length));
+    return result;
+}
+
+function normalizeMatrix(matrix, rows, cols) {
+    return resizeArray(matrix, rows, () => []).map(row =>
+        resizeArray(row, cols, () => 0).map(value => clampUnit(value))
+    );
+}
+
+function validateAndNormalizeModel(showMessage = true) {
+    const placeCount = activePlaces.length;
+    const transitionCount = activeTransitions.length;
+
+    matrix_Q = normalizeMatrix(matrix_Q, transitionCount, placeCount);
+    matrix_P = normalizeMatrix(matrix_P, placeCount, transitionCount);
+    matrix_R = resizeArray(matrix_R, transitionCount, () => 1).map(value => clampUnit(value, 1));
+    transitionThresholds = resizeArray(transitionThresholds, transitionCount, () => 0).map(value => clampUnit(value));
+    initialBeliefsScalar = resizeArray(initialBeliefsScalar, placeCount, () => 0).map(value => clampUnit(value));
+    initialBeliefsVector = resizeArray(initialBeliefsVector, placeCount, () => [0, 0, 0, 0]).map(vector =>
+        resizeArray(vector, 4, () => 0).map(value => clampUnit(value))
+    );
+
+    const errors = [];
+    if (matrix_Q.length !== transitionCount || matrix_Q.some(row => row.length !== placeCount)) errors.push('Q 尺寸不符合 M×N');
+    if (matrix_P.length !== placeCount || matrix_P.some(row => row.length !== transitionCount)) errors.push('P 尺寸不符合 N×M');
+    if (matrix_R.length !== transitionCount) errors.push('R 維度不符合 M');
+    if (transitionThresholds.length !== transitionCount) errors.push('Th 維度不符合 M');
+    if (initialBeliefsScalar.length !== placeCount || initialBeliefsVector.length !== placeCount) errors.push('N(0) 維度不符合 N');
+
+    const status = document.getElementById('matrix-validation-status');
+    if (status && showMessage) {
+        status.className = `validation-status ${errors.length ? 'error' : 'ok'}`;
+        status.textContent = errors.length
+            ? `檢查發現問題：${errors.join('、')}`
+            : `檢查完成：Q ${transitionCount}×${placeCount}、P ${placeCount}×${transitionCount}、R/Th ${transitionCount} 維、N(0) ${placeCount} 維，所有數值已限制於 [0, 1]。`;
+    }
+    return errors.length === 0;
+}
+
+function getSettingsSnapshot() {
+    validateAndNormalizeModel(false);
+    return {
+        format: 'fpn-forward-reasoning-settings',
+        version: 1,
+        currentMode,
+        maxAllowedSteps,
+        currentScenarioKey,
+        places: cloneVal(activePlaces),
+        transitions: cloneVal(activeTransitions),
+        matrix_P: cloneVal(matrix_P),
+        matrix_Q: cloneVal(matrix_Q),
+        matrix_R: cloneVal(matrix_R),
+        transitionThresholds: cloneVal(transitionThresholds),
+        initialBeliefsScalar: cloneVal(initialBeliefsScalar),
+        initialBeliefsVector: cloneVal(initialBeliefsVector)
+    };
+}
+
+function downloadBlob(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function exportSettingsJSON() {
+    downloadBlob(JSON.stringify(getSettingsSnapshot(), null, 2), 'fpn-settings.json', 'application/json');
+}
+
+function importSettingsJSON(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const settings = JSON.parse(reader.result);
+            if (!Array.isArray(settings.places) || !Array.isArray(settings.transitions)) throw new Error('缺少 places 或 transitions');
+            updateWithoutPageJump(() => {
+                activePlaces = cloneVal(settings.places);
+                activeTransitions = cloneVal(settings.transitions);
+                matrix_P = cloneVal(settings.matrix_P || []);
+                matrix_Q = cloneVal(settings.matrix_Q || []);
+                matrix_R = cloneVal(settings.matrix_R || []);
+                transitionThresholds = cloneVal(settings.transitionThresholds || []);
+                initialBeliefsScalar = cloneVal(settings.initialBeliefsScalar || []);
+                initialBeliefsVector = cloneVal(settings.initialBeliefsVector || []);
+                currentMode = settings.currentMode === 'vector' ? 'vector' : 'scalar';
+                maxAllowedSteps = Math.max(5, Math.min(50, Number(settings.maxAllowedSteps) || 25));
+                currentScenarioKey = 'custom';
+                validateAndNormalizeModel(false);
+                document.getElementById('cfg-place-count').textContent = activePlaces.length;
+                document.getElementById('cfg-trans-count').textContent = activeTransitions.length;
+                document.getElementById('cfg-max-steps').textContent = maxAllowedSteps;
+                document.getElementById('btn-mode-scalar').classList.toggle('active', currentMode === 'scalar');
+                document.getElementById('btn-mode-vector').classList.toggle('active', currentMode === 'vector');
+                updatePresetButtonStates();
+                renderInputControls();
+                renderMatrixTables();
+                calculateLayoutPositions();
+                renderSVGGraph();
+                markModelDirty();
+                validateAndNormalizeModel(true);
+            });
+        } catch (error) {
+            alert(`匯入失敗：${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function exportSettingsCSV() {
+    validateAndNormalizeModel(false);
+    const rows = [['section', 'row', 'column', 'value']];
+    matrix_Q.forEach((row, i) => row.forEach((value, j) => rows.push(['Q', `tr${i + 1}`, `p${j + 1}`, value])));
+    matrix_P.forEach((row, i) => row.forEach((value, j) => rows.push(['P', `p${i + 1}`, `tr${j + 1}`, value])));
+    matrix_R.forEach((value, i) => rows.push(['R', `tr${i + 1}`, '', value]));
+    transitionThresholds.forEach((value, i) => rows.push(['Th', `tr${i + 1}`, '', value]));
+    initialBeliefsScalar.forEach((value, i) => rows.push(['N_scalar', `p${i + 1}`, '', value]));
+    initialBeliefsVector.forEach((vector, i) => vector.forEach((value, j) => rows.push(['N_vector', `p${i + 1}`, `z${j + 1}`, value])));
+    const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    downloadBlob('\ufeff' + csv, 'fpn-settings.csv', 'text/csv;charset=utf-8');
+}
+
+function computeFullForwardReasoning() {
+    validateAndNormalizeModel(false);
+    const initN = currentMode === 'scalar' ? cloneVal(initialBeliefsScalar) : cloneVal(initialBeliefsVector);
+    const chain = [];
+    let currentN = cloneVal(initN);
+
+    for (let t = 0; t < maxAllowedSteps; t++) {
+        const N_c = vecComplement(currentN);
+        let Q_Nc, Q_Nc_c, Temp, U_step, Fired_Token, Delta_N, N_next;
+
+        if (currentMode === 'scalar') {
+            Q_Nc = maxMinCompScalar(matrix_Q, N_c);
+            Q_Nc_c = vecComplement(Q_Nc);
+            Temp = Q_Nc_c.map((val, idx) => Math.min(matrix_R[idx] !== undefined ? matrix_R[idx] : 1.0, val));
+            U_step = Temp.map((v, idx) => (v >= (transitionThresholds[idx] || 0) && v > 0 ? 1 : 0));
+            Fired_Token = Temp.map((v, idx) => (U_step[idx] === 1 ? v : 0));
+            Delta_N = maxMinCompScalar(matrix_P, Fired_Token);
+            N_next = currentN.map((n, idx) => Math.max(n, Delta_N[idx]));
+        } else {
+            Q_Nc = maxMinCompVector(matrix_Q, N_c);
+            Q_Nc_c = vecComplement(Q_Nc);
+            Temp = Q_Nc_c.map((vVec, idx) => vVec.map(v => Math.min(matrix_R[idx] !== undefined ? matrix_R[idx] : 1.0, v)));
+            U_step = Temp.map((vVec, idx) => vVec.map(v => (v >= (transitionThresholds[idx] || 0) && v > 0 ? 1 : 0)));
+            Fired_Token = Temp.map((vVec, idx) => vVec.map((v, k) => (U_step[idx][k] === 1 ? v : 0)));
+            Delta_N = maxMinCompVector(matrix_P, Fired_Token);
+            N_next = currentN.map((nVec, idx) => nVec.map((n, k) => Math.max(n, Delta_N[idx][k])));
+        }
+
+        const isSteady = vectorsEqual(currentN, N_next);
+        
+        const activeTransitionsList = [];
+        for (let j = 0; j < activeTransitions.length; j++) {
+            let isFiring = false;
+            if (currentMode === 'scalar') {
+                if (Fired_Token[j] > 0) isFiring = true;
+            } else {
+                if (Fired_Token[j] && Fired_Token[j].some(v => v > 0)) isFiring = true;
+            }
+            if (isFiring) activeTransitionsList.push(j);
+        }
+
+        chain.push({
+            step: t,
+            N_curr: cloneVal(currentN),
+            N_c: cloneVal(N_c),
+            Q_Nc: cloneVal(Q_Nc),
+            Q_Nc_c: cloneVal(Q_Nc_c),
+            Temp: cloneVal(Temp),
+            U_step: cloneVal(U_step),
+            Fired_Token: cloneVal(Fired_Token),
+            Delta_N: cloneVal(Delta_N),
+            N_next: cloneVal(N_next),
+            isSteady,
+            activeTransitions: activeTransitionsList
+        });
+
+        if (isSteady) break;
+        currentN = cloneVal(N_next);
+    }
+
+    if (chain.length > 0) {
+        chain[0].isDeadlock = chain[0].isSteady && chain[0].activeTransitions.length === 0;
+    }
+    return chain;
+}
+
+/**
+ * -------------------------------------------------------------
+ * 5. PROCEDURE REDUCENET (Backward Evidential Path Tracing)
+ * -------------------------------------------------------------
+ */
+function runProcedureReducenet(goalPlaceId) {
+    const axioms = activePlaces.filter(p => p.isAxiom).map(p => p.id);
+    let nonaxioms = [goalPlaceId];
+    const markedPlaces = new Set([goalPlaceId]);
+    const markedTransitions = new Set();
+    const traceHistory = [];
+
+    let loopSafety = 0;
+    while (nonaxioms.length > 0 && loopSafety < 15) {
+        loopSafety++;
+        const currentNonAxioms = [...nonaxioms];
+        const newlyFoundParents = new Set();
+        const newlyFoundTransitions = new Set();
+
+        currentNonAxioms.forEach(pId => {
+            const pIdx = activePlaces.findIndex(p => p.id === pId);
+            if (pIdx === -1) return;
+
+            for (let trIdx = 0; trIdx < matrix_P[pIdx].length; trIdx++) {
+                if (matrix_P[pIdx][trIdx] > 0) {
+                    const tr = activeTransitions[trIdx];
+                    newlyFoundTransitions.add(tr.id);
+                    markedTransitions.add(tr.id);
+
+                    for (let inPIdx = 0; inPIdx < matrix_Q[trIdx].length; inPIdx++) {
+                        if (matrix_Q[trIdx][inPIdx] > 0) {
+                            const inPlace = activePlaces[inPIdx];
+                            newlyFoundParents.add(inPlace.id);
+                            markedPlaces.add(inPlace.id);
+                        }
+                    }
+                }
+            }
+        });
+
+        traceHistory.push({
+            step: loopSafety,
+            targets: currentNonAxioms,
+            foundTransitions: Array.from(newlyFoundTransitions),
+            foundParents: Array.from(newlyFoundParents)
+        });
+
+        nonaxioms = Array.from(newlyFoundParents).filter(pId => !axioms.includes(pId));
+        const allInAxioms = Array.from(newlyFoundParents).length > 0 && Array.from(newlyFoundParents).every(pId => axioms.includes(pId));
+        if (allInAxioms) break;
+    }
+
+    return {
+        goal: goalPlaceId,
+        markedPlaces: Array.from(markedPlaces),
+        markedTransitions: Array.from(markedTransitions),
+        traceHistory
+    };
+}
+
+/**
+ * -------------------------------------------------------------
+ * 6. REAL-TIME AUTO-CALCULATION & UI REFRESH
+ * -------------------------------------------------------------
+ */
+function triggerAutoCalculation() {
+    simulationChain = computeFullForwardReasoning();
+    modelDirty = false;
+    
+    if (viewedStepIndex >= simulationChain.length) {
+        viewedStepIndex = simulationChain.length - 1;
+    }
+
+    const scrubber = document.getElementById('step-scrubber');
+    scrubber.max = simulationChain.length - 1;
+    scrubber.value = viewedStepIndex;
+
+    updateStepView();
+    renderTraceLogs();
+    renderMatrixTables();
+    renderCharts();
+    renderInlineReport();
+    renderStableValueDisplays();
+}
+
+function renderStableValueDisplays() {
+    const finalState = simulationChain[simulationChain.length - 1];
+    if (!finalState) return;
+
+    activePlaces.forEach((place, idx) => {
+        const display = document.getElementById(`stable-belief-${idx}`);
+        if (!display || finalState.N_curr[idx] === undefined) return;
+        const value = finalState.N_curr[idx];
+        display.textContent = currentMode === 'scalar'
+            ? `穩態值：${Number(value).toFixed(2)}`
+            : `穩態值：[${value.map(item => Number(item).toFixed(2)).join(', ')}]`;
+    });
+
+    activeTransitions.forEach((transition, idx) => {
+        const display = document.getElementById(`stable-threshold-${idx}`);
+        if (display) display.textContent = `目前 Th：${Number(transitionThresholds[idx] ?? 0).toFixed(2)}`;
+    });
+}
+
+function renderInlineReport() {
+    const content = document.getElementById('inline-report-content');
+    const status = document.getElementById('inline-report-status');
+    const finalState = simulationChain[simulationChain.length - 1];
+    if (!content || !status || !finalState) return;
+
+    content.textContent = buildCalculationReport();
+    status.textContent = finalState.isDeadlock
+        ? '死結警告'
+        : (finalState.isSteady ? `已收斂 ${simulationChain.length - 1} 步` : `尚未收斂：${maxAllowedSteps} 步上限`);
+    status.className = `badge ${finalState.isSteady && !finalState.isDeadlock ? 'badge-green' : 'badge-amber'}`;
+}
+
+function markModelDirty() {
+    modelDirty = true;
+    const status = document.getElementById('run-status');
+    if (status) {
+        status.textContent = '參數已變更，請點擊「執行完整推理」';
+        status.classList.add('dirty');
+    }
+    const runButton = document.getElementById('btn-run-inference');
+    if (runButton) runButton.classList.add('run-btn-pending');
+    const report = document.getElementById('inline-report-content');
+    const reportStatus = document.getElementById('inline-report-status');
+    if (report) report.textContent = '參數已變更，等待執行推理；目前頁面仍保留上一次已完成的結果。';
+    if (reportStatus) {
+        reportStatus.textContent = '等待執行';
+        reportStatus.className = 'badge badge-amber';
+    }
+    syncTopologyInputValues();
+}
+
+function syncTopologyInputValues() {
+    activePlaces.forEach((place, idx) => {
+        const valueElement = document.getElementById(`svg-val-${place.id}`);
+        const value = currentMode === 'scalar'
+            ? initialBeliefsScalar[idx]
+            : initialBeliefsVector[idx];
+        if (!valueElement || value === undefined) return;
+        valueElement.textContent = currentMode === 'scalar'
+            ? Number(value).toFixed(2)
+            : `[${value.map(item => Number(item).toFixed(2)).join(',')}]`;
+    });
+
+    activeTransitions.forEach((transition, idx) => {
+        const meta = document.querySelector(`#node-${transition.id} .transition-meta`);
+        if (meta) {
+            meta.textContent = `Th=${Number(transitionThresholds[idx] ?? 0).toFixed(2)}  R=${Number(matrix_R[idx] ?? 1).toFixed(2)}`;
+        }
+    });
+}
+
+function showInputBoundaryWarning(message) {
+    const status = document.getElementById('run-status');
+    if (status) {
+        status.textContent = `${message} 請執行推理以更新結果。`;
+        status.classList.add('dirty');
+    }
+}
+
+function updateRunStatus(text) {
+    const status = document.getElementById('run-status');
+    if (status) {
+        status.textContent = text;
+        status.classList.remove('dirty');
+    }
+    document.getElementById('btn-run-inference')?.classList.remove('run-btn-pending');
+}
+
+function runFullInference() {
+    updateWithoutPageJump(() => {
+        if (!validateAndNormalizeModel(true)) return;
+        viewedStepIndex = 0;
+        triggerAutoCalculation();
+        viewedStepIndex = simulationChain.length - 1;
+        updateStepView();
+        updateRunStatus(`完整推理完成：${simulationChain.length - 1} 步`);
+    });
+}
+
+function runSingleInference() {
+    updateWithoutPageJump(() => {
+        if (modelDirty || simulationChain.length === 0) {
+            if (!validateAndNormalizeModel(true)) return;
+            viewedStepIndex = 0;
+            triggerAutoCalculation();
+        }
+        if (viewedStepIndex < simulationChain.length - 1) {
+            viewedStepIndex++;
+            updateStepView();
+        }
+        updateRunStatus(`單步檢視：t = ${viewedStepIndex} / ${simulationChain.length - 1}`);
+    });
+}
+
+function updateStepView() {
+    if (simulationChain.length === 0) return;
+    const state = simulationChain[viewedStepIndex];
+    const totalSteps = simulationChain.length - 1;
+    const finalState = simulationChain[totalSteps];
+
+    // Scrubber & Step counter
+    document.getElementById('step-scrubber').value = viewedStepIndex;
+    document.getElementById('step-counter-text').innerHTML = `
+        <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--blue-primary);"></span>
+        檢視步驟：t = ${viewedStepIndex} / ${totalSteps}
+    `;
+
+    document.getElementById('btn-prev').disabled = viewedStepIndex === 0;
+    document.getElementById('btn-next').disabled = viewedStepIndex === totalSteps;
+
+    const badge = document.getElementById('steady-badge');
+    if (finalState.isDeadlock) {
+        badge.textContent = `警告：死結（初始狀態無法繼續激發）`;
+        badge.className = 'badge badge-amber status-deadlock';
+    } else if (finalState.isSteady) {
+        badge.textContent = `已達穩態 (${totalSteps} 步收斂)`;
+        badge.className = 'badge badge-green';
+    } else {
+        badge.textContent = `未達穩態 (已達上限 ${maxAllowedSteps} 步)`;
+        badge.className = 'badge badge-amber';
+    }
+
+    document.getElementById('log-step-count-badge').textContent = finalState.isDeadlock
+        ? '警告：陷入死結'
+        : (finalState.isSteady ? `共 ${totalSteps} 步收斂` : `警告：達到 ${maxAllowedSteps} 步上限`);
+
+    updateSVGGraph(state, finalState);
+    updateDecisionBanner(finalState);
+    highlightActiveLogItem(viewedStepIndex);
+}
+
+function updateSVGGraph(state, finalState) {
+    const N = state.N_curr;
+
+    activePlaces.forEach((p, idx) => {
+        const valElem = document.getElementById(`svg-val-${p.id}`);
+        if (valElem && N[idx] !== undefined) {
+            if (currentMode === 'scalar') {
+                valElem.textContent = typeof N[idx] === 'number' ? N[idx].toFixed(2) : N[idx];
+            } else {
+                valElem.textContent = `[${N[idx].map(v => v.toFixed(2)).join(',')}]`;
+                valElem.style.fontSize = '8px';
+            }
+        }
+    });
+
+    activeTransitions.forEach((tr, j) => {
+        const trNode = document.getElementById(`node-${tr.id}`)?.querySelector('.transition-bar');
+        const isFiring = state.activeTransitions && state.activeTransitions.includes(j);
+        
+        if (trNode) {
+            trNode.classList.toggle('firing', isFiring);
+        }
+
+        for (let inPIdx = 0; inPIdx < matrix_Q[j].length; inPIdx++) {
+            if (matrix_Q[j][inPIdx] > 0) {
+                const inP = activePlaces[inPIdx];
+                const arc = document.getElementById(`arc-${inP.id}-${tr.id}`);
+                if (arc) {
+                    arc.classList.toggle('active', isFiring);
+                    if (isFiring) arc.setAttribute('marker-end', 'url(#arrow-active)');
+                    else if (!arc.classList.contains('path-traced')) arc.setAttribute('marker-end', 'url(#arrow)');
+                }
+            }
+        }
+
+        for (let outPIdx = 0; outPIdx < matrix_P.length; outPIdx++) {
+            if (matrix_P[outPIdx][j] > 0) {
+                const outP = activePlaces[outPIdx];
+                const arc = document.getElementById(`arc-${tr.id}-${outP.id}`);
+                if (arc) {
+                    arc.classList.toggle('active', isFiring);
+                    if (isFiring) arc.setAttribute('marker-end', 'url(#arrow-active)');
+                    else if (!arc.classList.contains('path-traced')) arc.setAttribute('marker-end', 'url(#arrow)');
+                }
+            }
+        }
+    });
+
+    // Reset Reducenet highlight
+    document.querySelectorAll('.place-node').forEach(n => n.classList.remove('active-max', 'highlight-path'));
+    document.querySelectorAll('.arc-line').forEach(a => {
+        a.classList.remove('path-traced');
+        if (!a.classList.contains('active')) a.setAttribute('marker-end', 'url(#arrow)');
+    });
+
+    if (showTracePath) {
+        let maxVal = -1;
+        let bestConclusionId = null;
+
+        activePlaces.forEach((p, idx) => {
+            if (p.isConclusion) {
+                const val = currentMode === 'scalar' ? finalState.N_curr[idx] : Math.max(...finalState.N_curr[idx]);
+                if (val > maxVal) {
+                    maxVal = val;
+                    bestConclusionId = p.id;
+                }
+            }
+        });
+
+        if (bestConclusionId && maxVal > 0) {
+            const reducenetResult = runProcedureReducenet(bestConclusionId);
+            
+            reducenetResult.markedPlaces.forEach(pId => {
+                const node = document.getElementById(`node-${pId}`);
+                if (pId === bestConclusionId) node?.classList.add('active-max');
+                else node?.classList.add('highlight-path');
+            });
+
+            reducenetResult.markedTransitions.forEach(trId => {
+                const tr = activeTransitions.find(t => t.id === trId);
+                const trIdx = activeTransitions.findIndex(t => t.id === trId);
+                if (!tr) return;
+
+                for (let inPIdx = 0; inPIdx < matrix_Q[trIdx].length; inPIdx++) {
+                    if (matrix_Q[trIdx][inPIdx] > 0) {
+                        const inP = activePlaces[inPIdx];
+                        if (reducenetResult.markedPlaces.includes(inP.id)) {
+                            const arc = document.getElementById(`arc-${inP.id}-${tr.id}`);
+                            if (arc) {
+                                arc.classList.add('path-traced');
+                                arc.setAttribute('marker-end', 'url(#arrow-traced)');
+                            }
+                        }
+                    }
+                }
+
+                for (let outPIdx = 0; outPIdx < matrix_P.length; outPIdx++) {
+                    if (matrix_P[outPIdx][trIdx] > 0) {
+                        const outP = activePlaces[outPIdx];
+                        if (reducenetResult.markedPlaces.includes(outP.id)) {
+                            const arc = document.getElementById(`arc-${tr.id}-${outP.id}`);
+                            if (arc) {
+                                arc.classList.add('path-traced');
+                                arc.setAttribute('marker-end', 'url(#arrow-traced)');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+function updateDecisionBanner(finalState) {
+    const banner = document.getElementById('decision-banner');
+    const culpritText = document.getElementById('decision-culprit-text');
+    const expText = document.getElementById('decision-explanation-text');
+    const statusBadge = document.getElementById('decision-status');
+
+    if (finalState.isDeadlock) {
+        statusBadge.textContent = '警告：死結';
+        statusBadge.className = 'badge badge-amber status-deadlock';
+        culpritText.textContent = '⚠️ 變遷未被激發，系統陷入死結';
+        expText.textContent = '初始狀態沒有可激發的變遷。請降低門檻 Th、提高輸入信念，或檢查 Q/P 連通矩陣。';
+        return;
+    }
+
+    if (!finalState.isSteady) {
+        statusBadge.textContent = '計算未收斂';
+        statusBadge.className = 'badge badge-amber';
+        culpritText.textContent = '⚠️ 尚未達到穩定狀態';
+        expText.textContent = `警告：達到最大迭代步數 t_max=${maxAllowedSteps} 仍未完全收斂。請檢查拓撲連通性或提高迭代上限。`;
+        return;
+    }
+
+    statusBadge.textContent = `已收斂 (${simulationChain.length - 1} 步)`;
+    statusBadge.className = 'badge badge-green';
+
+    const conclusionPlaces = activePlaces
+        .map((p, idx) => ({ ...p, idx, val: finalState.N_curr[idx] }))
+        .filter(p => p.isConclusion);
+
+    if (conclusionPlaces.length === 0) {
+        culpritText.textContent = '拓撲中尚未指定結論位置 (Conclusion Nodes)';
+        expText.innerHTML = '請在左側面板點擊位置標籤切換為「結論」，系統將自動進行最高信念判斷。';
+        return;
+    }
+
+    conclusionPlaces.sort((a, b) => {
+        const valA = currentMode === 'scalar' ? a.val : Math.max(...a.val);
+        const valB = currentMode === 'scalar' ? b.val : Math.max(...b.val);
+        return valB - valA;
+    });
+
+    const top = conclusionPlaces[0];
+    const topVal = currentMode === 'scalar' ? top.val : `[${top.val.map(v => v.toFixed(2)).join(',')}]`;
+    const topNum = currentMode === 'scalar' ? top.val : Math.max(...top.val);
+
+    if (topNum <= 0) {
+        culpritText.textContent = '無有效激發結論 (信念值均為 0.00)';
+        expText.textContent = '請調高公理位置 (Axiom Nodes) 之初始信念或降低變遷門檻值 Th。';
+        return;
+    }
+
+    culpritText.innerHTML = `最高信念目標：<span style="color:var(--rose-primary);">${top.name}</span> (信念值: ${topVal})`;
+
+    const reducenetResult = runProcedureReducenet(top.id);
+    const pathPlaces = reducenetResult.markedPlaces.map(pId => {
+        const p = activePlaces.find(item => item.id === pId);
+        return `<b>${p?.label || pId}</b>`;
+    }).join(' ➔ ');
+
+    expText.innerHTML = `
+        <b>溯源解釋路徑 (Procedure reducenet)：</b><br>
+        ${pathPlaces}<br>
+        <span style="color:var(--text-muted); font-size:0.75rem;">
+            以終端結論 <b>${top.label}</b> 反向回溯至輸入公理集，因果子圖路徑在拓撲中以綠色虛線高亮標註。
+        </span>
+    `;
+}
+
+/**
+ * -------------------------------------------------------------
+ * 7. LOGS & REPORT GENERATOR
+ * -------------------------------------------------------------
+ */
+function renderTraceLogs() {
+    const container = document.getElementById('trace-log-container');
+    container.innerHTML = '';
+
+    simulationChain.forEach((state, t) => {
+        const isCurrentView = t === viewedStepIndex;
+        const logItem = document.createElement('div');
+        logItem.className = `trace-step-item ${isCurrentView ? 'active-step' : ''} ${state.isSteady ? 'steady' : ''}`;
+        logItem.id = `trace-step-${t}`;
+        logItem.onclick = () => {
+            viewedStepIndex = t;
+            updateStepView();
+        };
+        logItem.setAttribute('aria-label', `檢視推理時間步 ${t}`);
+
+        const formatBelief = v => {
+            if (Array.isArray(v)) return `[${v.map(num => num.toFixed(2)).join(', ')}]`;
+            return typeof v === 'number' ? v.toFixed(4) : v;
+        };
+        const nextStep = t + 1;
+
+        const placeLabels = activePlaces.map(place => place.id);
+        const transitionLabels = activeTransitions.map(transition => transition.id);
+        const createSection = (title, vectors, labels) => {
+            const section = document.createElement('section');
+            section.className = 'trace-section';
+            const heading = document.createElement('h3');
+            heading.className = 'trace-section-title';
+            heading.textContent = title;
+            section.appendChild(heading);
+
+            const table = document.createElement('table');
+            table.className = 'trace-value-table';
+            const body = document.createElement('tbody');
+            vectors.forEach(({ label, values }) => {
+                values.forEach((value, index) => {
+                    const row = document.createElement('tr');
+                    const name = document.createElement('td');
+                    name.className = 'trace-value-label';
+                    name.textContent = `${label} · ${labels[index] ?? `項目 ${index + 1}`}`;
+                    const result = document.createElement('td');
+                    result.className = 'trace-value-content';
+                    result.textContent = formatBelief(value);
+                    row.append(name, result);
+                    body.appendChild(row);
+                });
+            });
+            table.appendChild(body);
+            section.appendChild(table);
+            return section;
+        };
+
+        const header = document.createElement('div');
+        header.className = 'trace-header';
+        const stepLabel = document.createElement('span');
+        stepLabel.textContent = `時間步 t = ${t}`;
+        const status = document.createElement('span');
+        status.className = 'trace-status';
+        status.textContent = state.isDeadlock ? '死結' : state.isSteady ? '穩態' : '推理中';
+        header.append(stepLabel, status);
+        logItem.appendChild(header);
+
+        const sections = document.createElement('div');
+        sections.className = 'trace-section-grid';
+        sections.append(
+            createSection('01　當前信念與補數', [
+                { label: `N(${t})`, values: state.N_curr },
+                { label: `Nᶜ(${t})`, values: state.N_c }
+            ], placeLabels),
+            createSection('02　輸入連通合成 Q′ ◦ Nᶜ', [
+                { label: 'Q′ ◦ Nᶜ', values: state.Q_Nc },
+                { label: '(Q′ ◦ Nᶜ)ᶜ', values: state.Q_Nc_c }
+            ], transitionLabels),
+            createSection('03　門檻與變遷觸發', [
+                { label: 'Temp', values: state.Temp },
+                { label: 'U(Temp−Th)', values: state.U_step },
+                { label: 'Fired', values: state.Fired_Token }
+            ], transitionLabels),
+            createSection('04　輸出增量 ΔN = P′ ◦ Fired', [
+                { label: `ΔN(${t})`, values: state.Delta_N }
+            ], placeLabels),
+            createSection(`05　更新信念 N(${nextStep}) = N(${t}) ∨ ΔN`, [
+                { label: `N(${nextStep})`, values: state.N_next }
+            ], placeLabels)
+        );
+        logItem.appendChild(sections);
+
+        container.appendChild(logItem);
+    });
+}
+
+function highlightActiveLogItem(t) {
+    document.querySelectorAll('.trace-step-item').forEach((item, idx) => {
+        item.classList.toggle('active-step', idx === t);
+    });
+    const activeElem = document.getElementById(`trace-step-${t}`);
+    if (activeElem) {
+        activeElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function buildCalculationReport() {
+    let report = `正向推理矩陣計算報告\n`;
+    report += `情境模式：${SCENARIOS[currentScenarioKey]?.name || '自訂模式'}\n`;
+    report += `運算模式：${currentMode.toUpperCase()}\n`;
+    report += `狀態：${simulationChain[simulationChain.length - 1]?.isSteady ? '已收斂' : '未完全收斂'}\n`;
+    report += `迭代步數：${simulationChain.length - 1} / ${maxAllowedSteps}\n\n`;
+    const formatBelief = v => Array.isArray(v) ? `[${v.map(num => Number(num).toFixed(2)).join(', ')}]` : Number(v).toFixed(4);
+    simulationChain.forEach((state, t) => {
+        report += `迭代步 t = ${t}\n`;
+        report += `  N(${t})： [${state.N_curr.map((v, i) => `${activePlaces[i]?.id}:${formatBelief(v)}`).join(', ')}]\n`;
+        report += `  Temp(${t})： [${state.Temp.map((v, i) => `tr${i + 1}:${formatBelief(v)}`).join(', ')}]\n`;
+        report += `  Fired： [${state.activeTransitions.map(i => `tr${i + 1}`).join(', ')}]\n`;
+        report += `  Delta N(${t})： [${state.Delta_N.map((v, i) => `${activePlaces[i]?.id}:${formatBelief(v)}`).join(', ')}]\n`;
+        report += `  N(${t + 1})： [${state.N_next.map((v, i) => `${activePlaces[i]?.id}:${formatBelief(v)}`).join(', ')}]\n\n`;
+    });
+    return report;
+}
+
+/**
+ * -------------------------------------------------------------
+ * 8. STEP PLAYER & SCRUBBER
+ * -------------------------------------------------------------
+ */
+function scrubToStep(val) {
+    if (modelDirty) {
+        showInputBoundaryWarning('參數已變更，請先執行推理再檢視時間步。');
+        return;
+    }
+    viewedStepIndex = parseInt(val);
+    updateStepView();
+}
+
+function stepNext() {
+    if (modelDirty) {
+        runSingleInference();
+        return;
+    }
+    if (viewedStepIndex < simulationChain.length - 1) {
+        viewedStepIndex++;
+        updateStepView();
+    }
+}
+
+function stepPrevious() {
+    if (modelDirty) {
+        showInputBoundaryWarning('參數已變更，請先執行推理再檢視時間步。');
+        return;
+    }
+    if (viewedStepIndex > 0) {
+        viewedStepIndex--;
+        updateStepView();
+    }
+}
+
+function jumpToSteady() {
+    if (modelDirty) {
+        runFullInference();
+        return;
+    }
+    viewedStepIndex = simulationChain.length - 1;
+    updateStepView();
+}
+
+function toggleExplanationTrace() {
+    showTracePath = !showTracePath;
+    document.getElementById('btn-trace').classList.toggle('btn-primary', showTracePath);
+    updateStepView();
+}
+
+/**
+ * -------------------------------------------------------------
+ * 9. DYNAMIC DUAL CHARTS (Trajectory & Distribution - Straight Line Segments)
+ * -------------------------------------------------------------
+ */
+const PALETTE = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2', '#4f46e5', '#ea580c', '#0284c7', '#16a34a'];
+
+function renderCharts() {
+    const canvasTraj = document.getElementById('chart-trajectory');
+    const canvasDist = document.getElementById('chart-distribution');
+    if (!canvasTraj || !canvasDist) return;
+
+    drawTrajectoryChart(canvasTraj);
+    drawDistributionChart(canvasDist);
+}
+
+function drawTrajectoryChart(canvas) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentElement.clientWidth - 16;
+    const h = 170;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const padLeft = 32;
+    const padRight = 16;
+    const padTop = 16;
+    const padBottom = 24;
+    const plotW = w - padLeft - padRight;
+    const plotH = h - padTop - padBottom;
+    const totalSteps = simulationChain.length - 1;
+
+    // Background Grid
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#64748b';
+
+    [0, 0.5, 1.0].forEach(val => {
+        const y = padTop + plotH * (1 - val);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(w - padRight, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(1), 6, y + 3);
+    });
+
+    for (let t = 0; t <= totalSteps; t++) {
+        const x = padLeft + (totalSteps > 0 ? (t / totalSteps) * plotW : 0);
+        ctx.fillText(`t${t}`, x - 5, h - 8);
+    }
+
+    // Draw straight line segments for each place
+    activePlaces.forEach((p, pIdx) => {
+        const color = PALETTE[pIdx % PALETTE.length];
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+
+        simulationChain.forEach((state, t) => {
+            const rawVal = state.N_curr[pIdx];
+            const val = currentMode === 'scalar' ? rawVal : (Array.isArray(rawVal) ? Math.max(...rawVal) : rawVal);
+            const x = padLeft + (totalSteps > 0 ? (t / totalSteps) * plotW : 0);
+            const y = padTop + plotH * (1 - Math.max(0, Math.min(1, val)));
+            if (t === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y); // Clean straight line segment
+        });
+        ctx.stroke();
+
+        ctx.fillStyle = color;
+        simulationChain.forEach((state, t) => {
+            const rawVal = state.N_curr[pIdx];
+            const val = currentMode === 'scalar' ? rawVal : (Array.isArray(rawVal) ? Math.max(...rawVal) : rawVal);
+            const x = padLeft + (totalSteps > 0 ? (t / totalSteps) * plotW : 0);
+            const y = padTop + plotH * (1 - Math.max(0, Math.min(1, val)));
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    });
+
+    // Legend
+    let legX = padLeft + 6;
+    activePlaces.slice(0, 5).forEach((p, pIdx) => {
+        const color = PALETTE[pIdx % PALETTE.length];
+        ctx.fillStyle = color;
+        ctx.fillRect(legX, padTop - 12, 7, 7);
+        ctx.fillStyle = '#475569';
+        ctx.fillText(p.label, legX + 10, padTop - 6);
+        legX += ctx.measureText(p.label).width + 16;
+    });
+}
+
+function drawDistributionChart(canvas) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.parentElement.clientWidth - 16;
+    const h = 170;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const padLeft = 32;
+    const padRight = 16;
+    const padTop = 16;
+    const padBottom = 24;
+    const plotW = w - padLeft - padRight;
+    const plotH = h - padTop - padBottom;
+
+    const finalState = simulationChain[simulationChain.length - 1];
+
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#64748b';
+
+    [0, 0.5, 1.0].forEach(val => {
+        const y = padTop + plotH * (1 - val);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(w - padRight, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(1), 6, y + 3);
+    });
+
+    if (currentMode === 'vector') {
+        document.getElementById('chart-2-title').textContent = '圖表二：離散分佈特徵曲線 (z1 ~ z4)';
+        const xLabels = ['1', '2', '3', '4'];
+        xLabels.forEach((lbl, idx) => {
+            const x = padLeft + (idx / 3) * plotW;
+            ctx.fillText(lbl, x - 3, h - 8);
+        });
+
+        const seriesList = [];
+        activePlaces.forEach((p, idx) => {
+            if (p.isAxiom || p.isConclusion) {
+                seriesList.push({
+                    label: p.label,
+                    color: PALETTE[idx % PALETTE.length],
+                    data: finalState.N_curr[idx] || [0, 0, 0, 0]
+                });
+            }
+        });
+
+        seriesList.forEach(series => {
+            ctx.strokeStyle = series.color;
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+
+            series.data.forEach((val, idx) => {
+                const x = padLeft + (idx / (series.data.length - 1)) * plotW;
+                const y = padTop + plotH * (1 - Math.max(0, Math.min(1, val)));
+                if (idx === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            ctx.fillStyle = series.color;
+            series.data.forEach((val, idx) => {
+                const x = padLeft + (idx / (series.data.length - 1)) * plotW;
+                const y = padTop + plotH * (1 - Math.max(0, Math.min(1, val)));
+                ctx.beginPath();
+                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        });
+
+        let legX = padLeft + 6;
+        seriesList.forEach(series => {
+            ctx.fillStyle = series.color;
+            ctx.fillRect(legX, padTop - 12, 7, 7);
+            ctx.fillStyle = '#475569';
+            ctx.fillText(series.label, legX + 10, padTop - 6);
+            legX += ctx.measureText(series.label).width + 16;
+        });
+    } else {
+        document.getElementById('chart-2-title').textContent = '圖表二：各位置穩態信念值柱狀分佈';
+        const barCount = activePlaces.length;
+        const barW = Math.max(12, Math.min(32, (plotW / barCount) - 10));
+
+        activePlaces.forEach((p, idx) => {
+            const val = finalState.N_curr[idx] !== undefined ? finalState.N_curr[idx] : 0;
+            const x = padLeft + (idx * (plotW / barCount)) + 6;
+            const barH = plotH * Math.max(0, Math.min(1, val));
+            const y = padTop + plotH - barH;
+
+            ctx.fillStyle = p.isConclusion ? '#dc2626' : (p.isAxiom ? '#1d4ed8' : '#059669');
+            ctx.fillRect(x, y, barW, barH);
+            
+            ctx.fillStyle = '#475569';
+            ctx.fillText(p.label, x, h - 8);
+            ctx.fillText(typeof val === 'number' ? val.toFixed(2) : val, x, y - 4);
+        });
+    }
+}
+
+/**
+ * -------------------------------------------------------------
+ * 10. STRAIGHT-LINE SVG GRAPH RENDERING (直線變遷)
+ * -------------------------------------------------------------
+ */
+
+// Helper to calculate exact straight line between Place (circle r=25) and Transition (rect w=8, h=36)
+function getStraightLinePoints(x1, y1, isCircle1, x2, y2, isCircle2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist === 0) return { sx: x1, sy: y1, ex: x2, ey: y2 };
+
+    const ux = dx / dist;
+    const uy = dy / dist;
+
+    // Start point offset
+    let sx = x1;
+    let sy = y1;
+    if (isCircle1) {
+        sx = x1 + ux * 25;
+        sy = y1 + uy * 25;
+    } else {
+        sx = x1 + (dx >= 0 ? 4 : -4);
+        sy = y1;
+    }
+
+    // End point offset
+    let ex = x2;
+    let ey = y2;
+    if (isCircle2) {
+        ex = x2 - ux * 25;
+        ey = y2 - uy * 25;
+    } else {
+        ex = x2 + (dx >= 0 ? -4 : 4);
+        ey = y2;
+    }
+
+    return { sx, sy, ex, ey };
+}
+
+function renderSVGGraph() {
+    const arcsGroup = document.getElementById('svg-arcs');
+    const transGroup = document.getElementById('svg-transitions');
+    const placesGroup = document.getElementById('svg-places');
+
+    arcsGroup.innerHTML = '';
+    transGroup.innerHTML = '';
+    placesGroup.innerHTML = '';
+
+    // Draw STRAIGHT ARCS from matrix_Q (Places -> Transitions)
+    for (let j = 0; j < matrix_Q.length; j++) {
+        const tr = activeTransitions[j];
+        if (!tr) continue;
+        for (let k = 0; k < matrix_Q[j].length; k++) {
+            if (matrix_Q[j][k] > 0) {
+                const p = activePlaces[k];
+                if (!p) continue;
+                const arcId = `arc-${p.id}-${tr.id}`;
+                
+                const pt = getStraightLinePoints(p.x, p.y, true, tr.x, tr.y, false);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('id', arcId);
+                line.setAttribute('class', 'arc-line');
+                line.setAttribute('x1', pt.sx);
+                line.setAttribute('y1', pt.sy);
+                line.setAttribute('x2', pt.ex);
+                line.setAttribute('y2', pt.ey);
+                line.setAttribute('marker-end', 'url(#arrow)');
+                arcsGroup.appendChild(line);
+            }
+        }
+    }
+
+    // Draw STRAIGHT ARCS from matrix_P (Transitions -> Places)
+    for (let i = 0; i < matrix_P.length; i++) {
+        const p = activePlaces[i];
+        if (!p) continue;
+        for (let j = 0; j < matrix_P[i].length; j++) {
+            if (matrix_P[i][j] > 0) {
+                const tr = activeTransitions[j];
+                if (!tr) continue;
+                const arcId = `arc-${tr.id}-${p.id}`;
+
+                const pt = getStraightLinePoints(tr.x, tr.y, false, p.x, p.y, true);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('id', arcId);
+                line.setAttribute('class', 'arc-line');
+                line.setAttribute('x1', pt.sx);
+                line.setAttribute('y1', pt.sy);
+                line.setAttribute('x2', pt.ex);
+                line.setAttribute('y2', pt.ey);
+                line.setAttribute('marker-end', 'url(#arrow)');
+                arcsGroup.appendChild(line);
+            }
+        }
+    }
+
+    // Draw Transitions (Vertical Rectangular Bars - 直線變遷)
+    activeTransitions.forEach((tr, j) => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', `node-${tr.id}`);
+        g.style.cursor = 'pointer';
+        g.onclick = () => {
+            const curTh = transitionThresholds[j] || 0;
+            const newTh = prompt(`編輯變遷 ${tr.name} 門檻值 Th(${tr.name}) [0.0 ~ 1.0]:`, curTh);
+            if (newTh !== null) onThresholdNumberChange(j, newTh);
+        };
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('class', 'transition-bar');
+        rect.setAttribute('x', tr.x - 4);
+        rect.setAttribute('y', tr.y - 18);
+        rect.setAttribute('width', 8);
+        rect.setAttribute('height', 36);
+        rect.setAttribute('rx', 2);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'node-label');
+        text.setAttribute('x', tr.x);
+        text.setAttribute('y', tr.y - 24);
+        text.textContent = tr.name;
+
+        const meta = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        meta.setAttribute('class', 'transition-meta');
+        meta.setAttribute('x', tr.x);
+        meta.setAttribute('y', tr.y + 31);
+        meta.textContent = `Th=${Number(transitionThresholds[j] || 0).toFixed(2)}  R=${Number(matrix_R[j] ?? 1).toFixed(2)}`;
+
+        g.appendChild(rect);
+        g.appendChild(text);
+        g.appendChild(meta);
+        transGroup.appendChild(g);
+    });
+
+    // Draw Places (Circles)
+    activePlaces.forEach((p, idx) => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', `node-${p.id}`);
+        g.setAttribute('class', 'place-node');
+        g.onclick = () => onPlaceNodeClicked(idx);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('class', 'place-circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', 25);
+
+        const textLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textLabel.setAttribute('class', 'node-label');
+        textLabel.setAttribute('x', p.x);
+        textLabel.setAttribute('y', p.y - 5);
+        textLabel.textContent = p.label;
+
+        const textVal = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textVal.setAttribute('class', 'node-val');
+        textVal.setAttribute('id', `svg-val-${p.id}`);
+        textVal.setAttribute('x', p.x);
+        textVal.setAttribute('y', p.y + 11);
+        textVal.textContent = '0.00';
+
+        const textSub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textSub.setAttribute('class', 'node-subtext');
+        textSub.setAttribute('x', p.x);
+        textSub.setAttribute('y', p.y + 36);
+        textSub.textContent = p.id;
+
+        g.appendChild(circle);
+        g.appendChild(textLabel);
+        g.appendChild(textVal);
+        g.appendChild(textSub);
+        placesGroup.appendChild(g);
+    });
+}
+
+function onPlaceNodeClicked(idx) {
+    const p = activePlaces[idx];
+    if (currentMode === 'scalar') {
+        const newVal = prompt(`【設定初始信念】\n位置：${p.name}\n請輸入信念值 [0.0 ~ 1.0]:`, initialBeliefsScalar[idx]);
+        if (newVal !== null) onBeliefNumberChange(idx, newVal);
+    } else {
+        const str = prompt(`【設定向量分佈】\n位置：${p.name}\n請輸入4點分佈 (逗號隔開，如 0.6,0.7,0.8,0.9):`, initialBeliefsVector[idx].join(','));
+        if (str !== null) {
+            const arr = str.split(',').map(s => parseFloat(s.trim()) || 0);
+            if (arr.length === 4) {
+                initialBeliefsVector[idx] = arr.map(v => Math.max(0, Math.min(1, v)));
+                updateWithoutPageJump(() => {
+                    renderInputControls();
+                    markModelDirty();
+                });
+            }
+        }
+    }
+}
+
+/**
+ * -------------------------------------------------------------
+ * 11. UI RENDERING: INPUT CONTROLS & MATRIX TABLES
+ * -------------------------------------------------------------
+ */
+function renderInputControls() {
+    const container = document.getElementById('belief-inputs-container');
+    container.innerHTML = '';
+
+    activePlaces.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.className = 'input-item';
+
+        let roleBadge = '';
+        if (p.isAxiom) roleBadge = '<span class="badge badge-blue">公理 (Axiom)</span>';
+        else if (p.isConclusion) roleBadge = '<span class="badge badge-amber" style="color:var(--rose-primary); background:var(--rose-subtle);">結論 (Goal)</span>';
+        else roleBadge = '<span class="badge" style="background:#f1f5f9; color:#475569;">中介 (Interm)</span>';
+
+        const val = currentMode === 'scalar' ? initialBeliefsScalar[idx] : initialBeliefsVector[idx];
+
+        item.innerHTML = `
+            <div class="input-label-row">
+                <span class="node-tag" onclick="togglePlaceRole(${idx})" title="點擊切換角色">${p.name}</span>
+                ${roleBadge}
+            </div>
+            ${currentMode === 'scalar' ? `
+                <div class="input-control-row">
+                    <input type="range" class="range-slider" min="0" max="1" step="0.01" value="${Number(val).toFixed(2)}" oninput="onBeliefSliderChange(${idx}, this.value)">
+                    <input type="number" id="belief-number-${idx}" class="num-input" min="0" max="1" step="0.01" value="${Number(val).toFixed(2)}" onchange="onBeliefNumberChange(${idx}, this.value)">
+                </div>
+            ` : `
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:4px;">
+                    ${val.map((v, k) => `
+                        <input type="number" class="num-input" style="width:100%;" min="0" max="1" step="0.05" value="${Number(v).toFixed(2)}" onchange="onVectorCellChange(${idx}, ${k}, this.value)">
+                    `).join('')}
+                </div>
+            `}
+            <span class="stable-value" id="stable-belief-${idx}">穩態值：等待計算</span>
+        `;
+        container.appendChild(item);
+    });
+
+    // Thresholds container
+    const thContainer = document.getElementById('threshold-inputs-container');
+    thContainer.innerHTML = '';
+    activeTransitions.forEach((tr, j) => {
+        const thItem = document.createElement('div');
+        thItem.className = 'input-item';
+        const thVal = Number(transitionThresholds[j] ?? 0);
+        thItem.innerHTML = `
+            <div class="input-label-row">
+                <span style="font-weight:600; font-size:0.78rem;">變遷 ${tr.name} 門檻 (Threshold)</span>
+                <span style="font-family:var(--font-mono); color:var(--text-muted);">Th(${tr.name})</span>
+            </div>
+            <div class="input-control-row">
+                <input type="range" id="threshold-slider-${j}" class="range-slider" min="0" max="1" step="0.05" value="${thVal.toFixed(2)}" oninput="onThresholdSliderChange(${j}, this.value)">
+                <input type="number" id="threshold-number-${j}" class="num-input" min="0" max="1" step="0.05" value="${thVal.toFixed(2)}" onchange="onThresholdNumberChange(${j}, this.value)">
+            </div>
+            <span class="stable-value" id="stable-threshold-${j}">目前 Th：${thVal.toFixed(2)}</span>
+        `;
+        thContainer.appendChild(thItem);
+    });
+}
+
+function onBeliefSliderChange(idx, val) {
+    updateWithoutPageJump(() => {
+        initialBeliefsScalar[idx] = parseFloat(val);
+        const numberInput = document.getElementById(`belief-number-${idx}`);
+        if (numberInput) numberInput.value = Number(val).toFixed(2);
+        markModelDirty();
+    });
+}
+
+function onBeliefNumberChange(idx, val) {
+    updateWithoutPageJump(() => {
+        let num = parseFloat(val);
+        if (isNaN(num)) num = 0;
+        const outOfRange = num < 0 || num > 1;
+        initialBeliefsScalar[idx] = Math.max(0, Math.min(1, num));
+        const numberInput = document.getElementById(`belief-number-${idx}`);
+        if (numberInput) numberInput.value = initialBeliefsScalar[idx].toFixed(2);
+        const slider = document.querySelector(`#belief-number-${idx}`)?.previousElementSibling;
+        if (slider) slider.value = initialBeliefsScalar[idx];
+        markModelDirty();
+        if (outOfRange) showInputBoundaryWarning('初始信念已限制在 [0, 1]。');
+    });
+}
+
+function onVectorCellChange(placeIdx, elemIdx, val) {
+    updateWithoutPageJump(() => {
+        let num = parseFloat(val);
+        if (isNaN(num)) num = 0;
+        const outOfRange = num < 0 || num > 1;
+        initialBeliefsVector[placeIdx][elemIdx] = Math.max(0, Math.min(1, num));
+        markModelDirty();
+        if (outOfRange) showInputBoundaryWarning('離散分佈值已限制在 [0, 1]。');
+    });
+}
+
+function onThresholdSliderChange(j, val) {
+    updateWithoutPageJump(() => {
+        transitionThresholds[j] = parseFloat(val);
+        const numberInput = document.getElementById(`threshold-number-${j}`);
+        if (numberInput) numberInput.value = Number(val).toFixed(2);
+        markModelDirty();
+    });
+}
+
+function onThresholdNumberChange(j, val) {
+    updateWithoutPageJump(() => {
+        let num = parseFloat(val);
+        if (isNaN(num)) num = 0;
+        const outOfRange = num < 0 || num > 1;
+        transitionThresholds[j] = Math.max(0, Math.min(1, num));
+        const numberInput = document.getElementById(`threshold-number-${j}`);
+        if (numberInput) numberInput.value = transitionThresholds[j].toFixed(2);
+        const slider = document.querySelector(`#threshold-number-${j}`)?.previousElementSibling;
+        if (slider) slider.value = transitionThresholds[j];
+        markModelDirty();
+        if (outOfRange) showInputBoundaryWarning('門檻值已限制在 [0, 1]。');
+    });
+}
+
+function renderMatrixTables() {
+    const qTable = document.getElementById('matrix-q-table');
+    let qHtml = '<tr><th>Q</th>' + activePlaces.map(place => `<th>${place.id}</th>`).join('') + '</tr>';
+    matrix_Q.forEach((row, transitionIndex) => {
+        qHtml += `<tr><th>${activeTransitions[transitionIndex]?.name || `tr${transitionIndex + 1}`}</th>`;
+        row.forEach((value, placeIndex) => {
+            qHtml += `<td><button class="matrix-cell-btn ${value > 0 ? 'one' : ''}" onclick="toggleMatrixCell('Q', ${transitionIndex}, ${placeIndex})">${Number(value).toFixed(2)}</button></td>`;
+        });
+        qHtml += '</tr>';
+    });
+    qTable.innerHTML = qHtml;
+
+    const pTable = document.getElementById('matrix-p-table');
+    let pHtml = '<tr><th>P</th>' + activeTransitions.map(transition => `<th>${transition.name}</th>`).join('') + '</tr>';
+    matrix_P.forEach((row, placeIndex) => {
+        pHtml += `<tr><th>${activePlaces[placeIndex]?.id || `p${placeIndex + 1}`}</th>`;
+        row.forEach((value, transitionIndex) => {
+            pHtml += `<td><button class="matrix-cell-btn ${value > 0 ? 'one' : ''}" onclick="toggleMatrixCell('P', ${placeIndex}, ${transitionIndex})">${Number(value).toFixed(2)}</button></td>`;
+        });
+        pHtml += '</tr>';
+    });
+    pTable.innerHTML = pHtml;
+
+    const rTable = document.getElementById('matrix-r-table');
+    let rHtml = '<tr><th>變遷</th><th>可信度權重 R_j (0.0 ~ 1.0)</th></tr>';
+    activeTransitions.forEach((transition, transitionIndex) => {
+        const value = Number(matrix_R[transitionIndex] ?? 1);
+        rHtml += `<tr>
+            <th>${transition.name}</th>
+            <td><input type="number" id="r-weight-${transitionIndex}" class="num-input" style="width:90px; text-align:center;" min="0" max="1" step="0.05" value="${value.toFixed(2)}" onchange="onRWeightChange(${transitionIndex}, this.value)"></td>
+        </tr>`;
+    });
+    rTable.innerHTML = rHtml;
+}
+
+function toggleMatrixCell(type, row, col) {
+    updateWithoutPageJump(() => {
+        if (type === 'Q') {
+            matrix_Q[row][col] = matrix_Q[row][col] > 0 ? 0 : 1;
+        } else if (type === 'P') {
+            matrix_P[row][col] = matrix_P[row][col] > 0 ? 0 : 1;
+        }
+        currentScenarioKey = 'custom';
+        updatePresetButtonStates();
+        renderMatrixTables();
+        renderSVGGraph();
+        markModelDirty();
+    });
+}
+
+function onRWeightChange(j, val) {
+    updateWithoutPageJump(() => {
+        let num = parseFloat(val);
+        if (isNaN(num)) num = 1.0;
+        const outOfRange = num < 0 || num > 1;
+        matrix_R[j] = Math.max(0, Math.min(1, num));
+        const weightInput = document.getElementById(`r-weight-${j}`);
+        if (weightInput) weightInput.value = matrix_R[j].toFixed(2);
+        markModelDirty();
+        if (outOfRange) showInputBoundaryWarning('規則權重已限制在 [0, 1]。');
+    });
+}
+
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId)?.classList.add('active');
+    btn?.classList.add('active');
+}
+
+function switchWorkspace(workspace) {
+    const isMatrix = workspace === 'matrix';
+    const isPaper = workspace === 'paper';
+    document.body.classList.toggle('matrix-mode', isMatrix);
+    document.body.classList.toggle('paper-mode', isPaper);
+    document.getElementById('btn-workspace-matrix').classList.toggle('active', isMatrix);
+    document.getElementById('btn-workspace-fpn').classList.toggle('active', workspace === 'fpn');
+    document.getElementById('btn-workspace-paper').classList.toggle('active', isPaper);
+}
+
+function renderNumericMatrix() {
+    const container = document.getElementById('numeric-matrix-inputs');
+    const cols = numericMatrix[0].length;
+    container.style.gridTemplateColumns = `repeat(${cols}, minmax(62px, 1fr))`;
+    container.innerHTML = numericMatrix.map((row, rowIndex) => row.map((value, colIndex) =>
+        `<input class="utility-cell" type="number" step="any" value="${value}" aria-label="第 ${rowIndex + 1} 列第 ${colIndex + 1} 欄" data-row="${rowIndex}" data-col="${colIndex}">`
+    ).join('')).join('');
+    container.querySelectorAll('.utility-cell').forEach(input => input.addEventListener('input', () => {
+        numericMatrix[Number(input.dataset.row)][Number(input.dataset.col)] = input.value.trim() === '' ? NaN : Number(input.value);
+    }));
+    document.getElementById('numeric-matrix-size').textContent = `${numericMatrix.length} × ${cols}`;
+    document.getElementById('numeric-matrix-rows').value = numericMatrix.length;
+    document.getElementById('numeric-matrix-cols').value = cols;
+}
+
+function resizeNumericMatrix() {
+    const rows = Math.max(1, Math.min(27, Math.trunc(Number(document.getElementById('numeric-matrix-rows').value) || 1)));
+    const cols = Math.max(1, Math.min(27, Math.trunc(Number(document.getElementById('numeric-matrix-cols').value) || 1)));
+    numericMatrix = Array.from({ length: rows }, (_, row) => Array.from({ length: cols }, (_, col) => numericMatrix[row]?.[col] ?? 0));
+    renderNumericMatrix();
+    document.getElementById('numeric-matrix-message').textContent = '尺寸已更新。';
+    document.getElementById('numeric-matrix-result').innerHTML = '';
+}
+
+function clearNumericMatrix() {
+    numericMatrix = numericMatrix.map(row => row.map(() => 0));
+    renderNumericMatrix();
+    document.getElementById('numeric-matrix-message').textContent = '矩陣已清空。';
+    document.getElementById('numeric-matrix-result').innerHTML = '';
+}
+
+function matrixRref(input) {
+    const matrix = input.map(row => row.slice());
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    let pivotRow = 0;
+    for (let col = 0; col < cols && pivotRow < rows; col++) {
+        let best = pivotRow;
+        for (let row = pivotRow + 1; row < rows; row++) if (Math.abs(matrix[row][col]) > Math.abs(matrix[best][col])) best = row;
+        if (Math.abs(matrix[best][col]) < 1e-10) continue;
+        [matrix[pivotRow], matrix[best]] = [matrix[best], matrix[pivotRow]];
+        const pivot = matrix[pivotRow][col];
+        matrix[pivotRow] = matrix[pivotRow].map(value => value / pivot);
+        for (let row = 0; row < rows; row++) {
+            if (row === pivotRow) continue;
+            const factor = matrix[row][col];
+            matrix[row] = matrix[row].map((value, index) => value - factor * matrix[pivotRow][index]);
+        }
+        pivotRow++;
+    }
+    return { matrix, rank: pivotRow };
+}
+
+function matrixDeterminant(input) {
+    const matrix = input.map(row => row.slice());
+    let determinant = 1;
+    for (let col = 0; col < matrix.length; col++) {
+        let best = col;
+        for (let row = col + 1; row < matrix.length; row++) if (Math.abs(matrix[row][col]) > Math.abs(matrix[best][col])) best = row;
+        if (Math.abs(matrix[best][col]) < 1e-10) return 0;
+        if (best !== col) {
+            [matrix[col], matrix[best]] = [matrix[best], matrix[col]];
+            determinant *= -1;
+        }
+        const pivot = matrix[col][col];
+        determinant *= pivot;
+        for (let row = col + 1; row < matrix.length; row++) {
+            const factor = matrix[row][col] / pivot;
+            for (let index = col + 1; index < matrix.length; index++) matrix[row][index] -= factor * matrix[col][index];
+        }
+    }
+    return determinant;
+}
+
+function matrixInverse(input) {
+    const size = input.length;
+    const augmented = input.map((row, index) => [...row, ...Array.from({ length: size }, (_, col) => Number(index === col))]);
+    for (let col = 0; col < size; col++) {
+        let best = col;
+        for (let row = col + 1; row < size; row++) if (Math.abs(augmented[row][col]) > Math.abs(augmented[best][col])) best = row;
+        if (Math.abs(augmented[best][col]) < 1e-10) return null;
+        [augmented[col], augmented[best]] = [augmented[best], augmented[col]];
+        const pivot = augmented[col][col];
+        augmented[col] = augmented[col].map(value => value / pivot);
+        for (let row = 0; row < size; row++) {
+            if (row === col) continue;
+            const factor = augmented[row][col];
+            augmented[row] = augmented[row].map((value, index) => value - factor * augmented[col][index]);
+        }
+    }
+    return augmented.map(row => row.slice(size));
+}
+
+function calculateNumericMatrix(operation) {
+    const inputs = [...document.querySelectorAll('#numeric-matrix-inputs input')];
+    const values = inputs.map(input => input.value.trim() === '' ? NaN : Number(input.value));
+    if (values.some(value => !Number.isFinite(value))) {
+        document.getElementById('numeric-matrix-message').textContent = '請輸入有效的有限數值。';
+        return;
+    }
+    const rows = numericMatrix.length;
+    const cols = numericMatrix[0].length;
+    const matrix = Array.from({ length: rows }, (_, row) => values.slice(row * cols, (row + 1) * cols));
+    let result;
+    let title;
+    if (operation === 'transpose') {
+        result = Array.from({ length: cols }, (_, col) => matrix.map(row => row[col]));
+        title = '轉置矩陣 Aᵀ';
+    } else if (operation === 'determinant' || operation === 'inverse') {
+        if (rows !== cols) return showNumericMatrixMessage('行列式與反矩陣只適用於方陣。');
+        result = operation === 'determinant' ? matrixDeterminant(matrix) : matrixInverse(matrix);
+        if (result === null) return showNumericMatrixMessage('此矩陣為奇異矩陣，不存在反矩陣。');
+        title = operation === 'determinant' ? '行列式 det(A)' : '反矩陣 A⁻¹';
+    } else {
+        const reduced = matrixRref(matrix);
+        result = operation === 'rank' ? reduced.rank : reduced.matrix;
+        title = operation === 'rank' ? '矩陣秩 rank(A)' : '最簡列梯形矩陣';
+    }
+    document.getElementById('numeric-matrix-result-title').textContent = title;
+    document.getElementById('numeric-matrix-message').textContent = '計算完成。';
+    document.getElementById('numeric-matrix-result').innerHTML = Array.isArray(result)
+        ? renderUtilityTable(result)
+        : `<strong style="display:block; padding:8px 0; color:var(--blue-primary); font:700 1.25rem var(--font-mono);">${formatUtilityNumber(result)}</strong>`;
+}
+
+function showNumericMatrixMessage(message) {
+    document.getElementById('numeric-matrix-result-title').textContent = '無法執行運算';
+    document.getElementById('numeric-matrix-message').textContent = message;
+    document.getElementById('numeric-matrix-result').innerHTML = '';
+}
+
+function formatUtilityNumber(value) {
+    return String(Math.abs(value) < 1e-10 ? 0 : Number(value.toFixed(6)));
+}
+
+function renderUtilityTable(matrix) {
+    return `<table class="utility-result-table"><tbody>${matrix.map(row => `<tr>${row.map(value => `<td>${formatUtilityNumber(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function renderPaperMatrix() {
+    const container = document.getElementById('paper-matrix-inputs');
+    const cols = paperRelationMatrix[0].length;
+    container.style.gridTemplateColumns = `repeat(${cols}, minmax(62px, 1fr))`;
+    container.innerHTML = paperRelationMatrix.map((row, rowIndex) => row.map((value, colIndex) =>
+        `<input class="utility-cell" type="number" min="0" max="1" step="0.1" value="${value}" aria-label="A 第 ${rowIndex + 1} 列第 ${colIndex + 1} 欄" data-row="${rowIndex}" data-col="${colIndex}">`
+    ).join('')).join('');
+    container.querySelectorAll('.utility-cell').forEach(input => input.addEventListener('input', () => {
+        paperRelationMatrix[Number(input.dataset.row)][Number(input.dataset.col)] = input.value.trim() === '' ? NaN : Number(input.value);
+    }));
+    document.getElementById('paper-matrix-size').textContent = `A: ${paperRelationMatrix.length} × ${cols}`;
+    document.getElementById('paper-matrix-rows').value = paperRelationMatrix.length;
+    document.getElementById('paper-matrix-cols').value = cols;
+}
+
+function resizePaperMatrix() {
+    const rows = Math.max(1, Math.min(27, Math.trunc(Number(document.getElementById('paper-matrix-rows').value) || 1)));
+    const cols = Math.max(1, Math.min(27, Math.trunc(Number(document.getElementById('paper-matrix-cols').value) || 1)));
+    paperRelationMatrix = Array.from({ length: rows }, (_, row) => Array.from({ length: cols }, (_, col) => paperRelationMatrix[row]?.[col] ?? 0));
+    renderPaperMatrix();
+    resetPaperResults('尺寸已套用，請輸入矩陣數值後計算。');
+}
+
+function loadPaperExample(kind) {
+    paperRelationMatrix = kind === 'exact'
+        ? [[0, 0, 1], [0.1, 0.8, 0.5], [1, 0, 0], [0.1, 0.5, 1], [0, 1, 0], [1, 0, 0]]
+        : [[0.3, 0.5], [0.7, 0.8], [0.8, 0.9]];
+    renderPaperMatrix();
+    resetPaperResults(kind === 'exact' ? '已載入精確解範例。' : '已載入近似解範例。');
+}
+
+function resetPaperResults(message) {
+    document.getElementById('paper-matrix-message').textContent = message;
+    document.getElementById('paper-result-status').textContent = '尚未計算';
+    document.getElementById('paper-result-summary').textContent = message;
+    document.getElementById('paper-result-content').innerHTML = '';
+}
+
+function maxMinProduct(vector, matrix) {
+    return matrix[0].map((_, col) => Math.max(...matrix.map((row, index) => Math.min(vector[index], row[col]))));
+}
+
+function solvePaperTarget(matrix, targetColumn) {
+    const cols = matrix[0].length;
+    const columnOrder = [targetColumn, ...Array.from({ length: cols }, (_, index) => index).filter(index => index !== targetColumn)];
+    let best = null;
+    matrix.forEach((row, rowIndex) => {
+        const ordered = columnOrder.map(col => row[col]);
+        const knots = [...new Set([0, 1, ...ordered])].sort((left, right) => left - right);
+        knots.forEach(level => {
+            const score = 1 - Math.min(level, ordered[0]) + ordered.slice(1).reduce((sum, value) => sum + Math.min(level, value), 0);
+            if (!best || score < best.score - 1e-10) best = { rowIndex, level, score, knots };
+        });
+    });
+    const solution = Array(matrix.length).fill(0);
+    solution[best.rowIndex] = best.level;
+    const output = maxMinProduct(solution, matrix);
+    const target = Array.from({ length: cols }, (_, col) => Number(col === targetColumn));
+    const deviations = output.map((value, col) => Math.abs(value - target[col]));
+    return { solution, output, target, deviations, distance: deviations.reduce((sum, value) => sum + value, 0), alpha: best.rowIndex, level: best.level };
+}
+
+function solvePaperInverseRelation() {
+    const inputs = [...document.querySelectorAll('#paper-matrix-inputs input')];
+    const values = inputs.map(input => input.value.trim() === '' ? NaN : Number(input.value));
+    if (values.some(value => !Number.isFinite(value) || value < 0 || value > 1)) {
+        document.getElementById('paper-matrix-message').textContent = '所有 A 矩陣值都必須是 [0, 1] 內的有限數值。';
+        return;
+    }
+    const rows = paperRelationMatrix.length;
+    const cols = paperRelationMatrix[0].length;
+    const matrix = Array.from({ length: rows }, (_, row) => values.slice(row * cols, (row + 1) * cols));
+    paperRelationMatrix = matrix;
+    const solutions = Array.from({ length: cols }, (_, target) => solvePaperTarget(matrix, target));
+    const inverse = solutions.map(result => result.solution);
+    const reconstructed = inverse.map(row => maxMinProduct(row, matrix));
+    const totalDistance = solutions.reduce((sum, result) => sum + result.distance, 0);
+    const exact = totalDistance < 1e-9;
+    const fmtVector = vector => `[${vector.map(formatUtilityNumber).join(', ')}]`;
+    const rowsHtml = solutions.map((result, index) => `<tr><td>e${index + 1}</td><td>${result.alpha + 1}</td><td>${formatUtilityNumber(result.level)}</td><td>${fmtVector(result.target)}</td><td>${fmtVector(result.output)}</td><td>${fmtVector(result.deviations)}</td><td><b>${formatUtilityNumber(result.distance)}</b></td></tr>`).join('');
+    const substitutionHtml = solutions.map((result, index) => {
+        const errorTerms = result.target.map((value, col) => `|${formatUtilityNumber(value)} − ${formatUtilityNumber(result.output[col])}|`).join(' + ');
+        const solutionLabel = `x = ${fmtVector(result.solution)}`;
+        const reconstructionLabel = `b′ = ${fmtVector(result.output)}`;
+        return `<div class="inverse-reading-row"><b>目標 e${index + 1}</b><div>${solutionLabel}；${reconstructionLabel}</div><div class="inverse-equation">D${index + 1} = ${errorTerms} = ${formatUtilityNumber(result.distance)}</div></div>`;
+    }).join('');
+    document.getElementById('paper-matrix-message').textContent = `已計算 ${cols} 個單位向量目標。`;
+    document.getElementById('paper-result-status').textContent = exact ? '精確解存在' : '最佳近似解';
+    document.getElementById('paper-result-summary').textContent = exact
+        ? '已找到精確逆關係，Q ◦ A = I，總 Hamming 距離為 0。'
+        : `無精確解；顯示一組全域最佳近似解，總 Hamming 距離為 ${formatUtilityNumber(totalDistance)}。`;
+    document.getElementById('paper-result-content').innerHTML = `
+        <div class="paper-stat-grid" style="display:flex; gap:20px; flex-wrap:wrap; margin:12px 0;"><div><b>A</b> ${rows} × ${cols}</div><div><b>Q</b> ${cols} × ${rows}</div><div><b>總距離</b> ${formatUtilityNumber(totalDistance)}</div></div>
+        <div class="inverse-result-grid"><div><b>本次輸入矩陣 A</b><div style="overflow:auto;">${renderUtilityTable(matrix)}</div></div><div><b>逆關係矩陣 Q</b><div style="overflow:auto;">${renderUtilityTable(inverse)}</div></div><div><b>重建矩陣 Q ◦ A</b><div style="overflow:auto;">${renderUtilityTable(reconstructed)}</div></div></div>
+        <div style="margin-top:14px;"><b>Hamming 距離逐項分解</b><div style="overflow:auto;"><table class="utility-result-table"><thead><tr><th>目標</th><th>採用 A 列</th><th>xα</th><th>目標 b</th><th>重建 b′</th><th>|b−b′|</th><th>Dₖ</th></tr></thead><tbody>${rowsHtml}</tbody></table></div></div>
+        <details open class="inverse-guide" style="margin-top:14px;"><summary>本次輸入值的 Hamming 距離代入計算</summary><div class="inverse-guide-content" style="grid-template-columns:minmax(0,1fr);">${substitutionHtml}<div class="inverse-equation"><b>總距離</b> = ${solutions.map((result, index) => `D${index + 1}(${formatUtilityNumber(result.distance)})`).join(' + ')} = ${formatUtilityNumber(totalDistance)}</div></div></details>
+        <div class="inverse-chart-grid"><div class="inverse-chart"><b>Max-Min 逆關係 Q 數值熱圖</b><div class="inverse-chart-scroll">${renderInverseHeatmap(inverse, 'Max-Min 逆關係 Q')}</div></div><div class="inverse-chart"><b>Q ◦ A 重建熱圖</b><div class="inverse-chart-scroll">${renderInverseHeatmap(reconstructed, 'Q ◦ A')}</div></div><div class="inverse-chart"><b>各目標 Hamming 距離</b><div class="inverse-chart-scroll">${renderInverseDistanceChart(solutions, cols)}</div></div></div>`;
+    requestAnimationFrame(() => document.getElementById('paper-result-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
+function renderInverseHeatmap(matrix, label) {
+    const cw = 36, ch = 28, left = 34, top = 24;
+    const width = left + matrix[0].length * cw + 4;
+    const height = top + matrix.length * ch + 4;
+    const cells = matrix.map((row, rowIndex) => row.map((value, colIndex) => {
+        const x = left + colIndex * cw, y = top + rowIndex * ch;
+        return `<rect x="${x}" y="${y}" width="${cw - 2}" height="${ch - 2}" rx="3" fill="#1d4ed8" fill-opacity="${0.1 + value * 0.9}"/><text x="${x + (cw - 2) / 2}" y="${y + 17}" text-anchor="middle" font-size="9" fill="${value > 0.58 ? '#fff' : '#0f172a'}">${formatUtilityNumber(value)}</text>`;
+    }).join('')).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${label}熱圖">${cells}</svg>`;
+}
+
+function renderInverseDistanceChart(results, columns) {
+    const width = 430, left = 40, plotWidth = 340, rowHeight = 26, height = 30 + results.length * rowHeight;
+    const bars = results.map((result, index) => {
+        const y = 8 + index * rowHeight, barWidth = plotWidth * result.distance / columns;
+        return `<text x="${left - 6}" y="${y + 14}" text-anchor="end" font-size="10" fill="#475569">e${index + 1}</text><rect x="${left}" y="${y}" width="${barWidth}" height="16" rx="3" fill="${result.distance < 1e-9 ? '#059669' : '#d97706'}"/><text x="${left + barWidth + 5}" y="${y + 13}" font-size="10" fill="#0f172a">${formatUtilityNumber(result.distance)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Hamming 距離長條圖">${bars}</svg>`;
+}
+
+function updateWithoutPageJump(update) {
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    update();
+    window.scrollTo(scrollX, scrollY);
+    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+}
+
+function switchMode(mode) {
+    updateWithoutPageJump(() => {
+        currentMode = mode;
+        document.getElementById('btn-mode-scalar').classList.toggle('active', mode === 'scalar');
+        document.getElementById('btn-mode-vector').classList.toggle('active', mode === 'vector');
+        renderInputControls();
+        markModelDirty();
+    });
+}
+
+function renderMathFormula() {
+    if (window.katex) {
+        katex.render(
+            "N(t+1) = N(t) \\vee \\Big( P' \\circ \\big[ R \\circ (Q' \\circ N^c(t))^c \\wedge U(R \\circ (Q' \\circ N^c(t))^c - Th) \\big] \\Big)",
+            document.getElementById('math-formula-box'),
+            { throwOnError: false, displayMode: true }
+        );
+        katex.render(
+            "\\begin{aligned} \\text{Temp}(t) &= R \\circ (Q' \\circ N^c(t))^c \\\\ \\Delta N(t) &= P' \\circ [\\text{Temp}(t) \\wedge U(\\text{Temp}(t) - Th)] \\\\ N(t+1) &= N(t) \\vee \\Delta N(t) \\end{aligned}",
+            document.getElementById('math-formula-full'),
+            { throwOnError: false, displayMode: true }
+        );
+    }
+}
+
+/**
+ * -------------------------------------------------------------
+ * 12. PRESET LOADER & INITIALIZATION
+ * -------------------------------------------------------------
+ */
+function updatePresetButtonStates() {
+    ['custom', 'scenario1', 'scenario2', 'scenario3'].forEach(key => {
+        const btn = document.getElementById(`btn-preset-${key}`);
+        if (btn) {
+            btn.classList.toggle('btn-primary', currentScenarioKey === key);
+        }
+    });
+}
+
+function syncScenarioDefaultDisplay(scenario) {
+    document.getElementById('cfg-place-count').textContent = activePlaces.length;
+    document.getElementById('cfg-trans-count').textContent = activeTransitions.length;
+    document.getElementById('cfg-max-steps').textContent = maxAllowedSteps;
+
+    const badge = document.getElementById('scenario-default-badge');
+    if (badge) badge.textContent = `目前情境：${scenario.name}`;
+
+    activePlaces.forEach((place, idx) => {
+        const beliefInput = document.getElementById(`belief-number-${idx}`);
+        if (beliefInput && currentMode === 'scalar') {
+            beliefInput.value = Number(initialBeliefsScalar[idx] ?? 0).toFixed(2);
+        }
+    });
+
+    activeTransitions.forEach((transition, idx) => {
+        const thresholdInput = document.getElementById(`threshold-number-${idx}`);
+        const thresholdSlider = document.getElementById(`threshold-slider-${idx}`);
+        const weightInput = document.getElementById(`r-weight-${idx}`);
+        const thresholdValue = Number(transitionThresholds[idx] ?? 0).toFixed(2);
+        if (thresholdInput) thresholdInput.value = thresholdValue;
+        if (thresholdSlider) thresholdSlider.value = thresholdValue;
+        if (weightInput) weightInput.value = Number(matrix_R[idx] ?? 1).toFixed(2);
+    });
+}
+
+function loadPreset(key) {
+    updateWithoutPageJump(() => {
+        currentScenarioKey = key;
+        const scenario = SCENARIOS[key] || SCENARIOS.custom;
+        
+        activePlaces = cloneVal(scenario.places);
+        activeTransitions = cloneVal(scenario.transitions);
+        matrix_P = cloneVal(scenario.P);
+        matrix_Q = cloneVal(scenario.Q);
+        matrix_R = cloneVal(scenario.R);
+        transitionThresholds = cloneVal(scenario.Th);
+        initialBeliefsScalar = cloneVal(scenario.N_scalar);
+        initialBeliefsVector = cloneVal(scenario.N_vector);
+
+        // Normalize only the loaded preset dimensions; preserve its book-defined values.
+        validateAndNormalizeModel(false);
+
+        document.getElementById('cfg-place-count').textContent = activePlaces.length;
+        document.getElementById('cfg-trans-count').textContent = activeTransitions.length;
+        document.getElementById('cfg-max-steps').textContent = maxAllowedSteps;
+
+        updatePresetButtonStates();
+        renderInputControls();
+        renderMatrixTables();
+        calculateLayoutPositions();
+        renderSVGGraph();
+        syncScenarioDefaultDisplay(scenario);
+        markModelDirty();
+    });
+    runFullInference();
+}
+
+function resetToZero() {
+    updateWithoutPageJump(() => {
+        initialBeliefsScalar = initialBeliefsScalar.map(() => 0.0);
+        initialBeliefsVector = initialBeliefsVector.map(() => [0, 0, 0, 0]);
+        transitionThresholds = transitionThresholds.map(() => 0.0);
+        renderInputControls();
+        markModelDirty();
+    });
+}
+
+function resetToDefault() {
+    loadPreset('custom');
+}
+
+function initUI() {
+    renderMathFormula();
+    renderNumericMatrix();
+    renderPaperMatrix();
+    // Default load: Custom Mode (自訂模式)
+    loadPreset('custom');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    initUI();
+    window.addEventListener('resize', () => {
+        calculateLayoutPositions();
+        renderSVGGraph();
+        renderCharts();
+    });
+});
+</script>
+</body>
+</html>
